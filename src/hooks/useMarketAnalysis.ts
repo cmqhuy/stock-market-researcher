@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AppSettings, MarketState, NewsArticle } from '../types';
 import { NewsService } from '../services/news';
 import { AIService } from '../services/ai';
@@ -30,6 +30,9 @@ export function useMarketAnalysis(
   });
 
   const [isLoadingMarket, setIsLoadingMarket] = useState(false);
+
+  const lastUsedKeyRef = useRef(settings.apiKey);
+  const lastUsedModeRef = useRef(settings.mode);
 
   // Sync market state to localStorage
   useEffect(() => {
@@ -103,14 +106,22 @@ export function useMarketAnalysis(
     }
   }, [triggerError]);
 
-  // Run initial market analysis on mount if expired
+  // Run initial market analysis on mount if expired or configuration changes
   useEffect(() => {
     const now = Date.now();
     const isExpired = !marketState.timestamp || (now - marketState.timestamp > 60 * 60 * 1000);
     const isSimulated = marketState.isSimulated === true;
-    const needsRefetch = isExpired || (settings.mode === 'live' && isSimulated);
+    const modeChanged = settings.mode !== lastUsedModeRef.current;
+    const keyChanged = settings.apiKey !== lastUsedKeyRef.current;
+
+    const needsRefetch = isExpired || 
+                          (settings.mode === 'live' && isSimulated) || 
+                          (settings.mode === 'live' && keyChanged) || 
+                          modeChanged;
 
     if (needsRefetch) {
+      lastUsedKeyRef.current = settings.apiKey;
+      lastUsedModeRef.current = settings.mode;
       runMarketAnalysis(settings);
     }
   }, [settings, runMarketAnalysis]);

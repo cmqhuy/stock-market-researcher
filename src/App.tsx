@@ -44,11 +44,6 @@ export function App() {
   // Handle setting modes / API Key
   const handleSaveSettingsAndTrigger = (newSettings: AppSettings) => {
     saveSettings(newSettings);
-    // Re-run analyses based on the new settings
-    runMarketAnalysis(newSettings);
-    if (selectedTicker !== 'MARKET') {
-      runStockAnalysis(selectedTicker, newSettings);
-    }
   };
 
   // Watchlist Actions

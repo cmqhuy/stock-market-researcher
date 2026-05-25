@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AppSettings, StockAnalysis, WatchlistStock, NewsArticle } from '../types';
 import { NewsService } from '../services/news';
 import { AIService } from '../services/ai';
@@ -42,6 +42,10 @@ export function useStockAnalysis(
   });
 
   const [isLoadingStock, setIsLoadingStock] = useState(false);
+
+  const lastUsedKeyRef = useRef(settings.apiKey);
+  const lastUsedModeRef = useRef(settings.mode);
+  const lastSelectedTickerRef = useRef(selectedTicker);
 
   // Sync stock analyses to localStorage
   useEffect(() => {
@@ -202,16 +206,27 @@ export function useStockAnalysis(
     }
   }, [watchlist, setWatchlist, triggerError]);
 
-  // Load analysis whenever the selected stock changes or expires
+  // Load analysis whenever the selected stock changes, expires, or configuration changes
   useEffect(() => {
     if (selectedTicker !== 'MARKET') {
       const existing = stockAnalyses[selectedTicker];
       const now = Date.now();
       const isExpired = !existing || !existing.timestamp || (now - existing.timestamp > 60 * 60 * 1000);
       const isSimulated = existing?.isSimulated === true;
-      const needsRefetch = isExpired || (settings.mode === 'live' && isSimulated);
+      const modeChanged = settings.mode !== lastUsedModeRef.current;
+      const keyChanged = settings.apiKey !== lastUsedKeyRef.current;
+      const tickerChanged = selectedTicker !== lastSelectedTickerRef.current;
+
+      const needsRefetch = isExpired || 
+                            (settings.mode === 'live' && isSimulated) || 
+                            (settings.mode === 'live' && keyChanged) || 
+                            modeChanged || 
+                            tickerChanged;
 
       if (needsRefetch) {
+        lastUsedKeyRef.current = settings.apiKey;
+        lastUsedModeRef.current = settings.mode;
+        lastSelectedTickerRef.current = selectedTicker;
         runStockAnalysis(selectedTicker, settings);
       }
     }
