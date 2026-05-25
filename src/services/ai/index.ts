@@ -48,7 +48,34 @@ async function generateContentWithRetry(
   }
 }
 
+type PendingChangeListener = (count: number) => void;
+
 export class AIService implements IAIService {
+  private static pendingCount = 0;
+  private static listeners = new Set<PendingChangeListener>();
+
+  static getPendingCount(): number {
+    return this.pendingCount;
+  }
+
+  static subscribe(listener: PendingChangeListener): () => void {
+    this.listeners.add(listener);
+    listener(this.pendingCount);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private static increment() {
+    this.pendingCount++;
+    this.listeners.forEach(l => l(this.pendingCount));
+  }
+
+  private static decrement() {
+    this.pendingCount = Math.max(0, this.pendingCount - 1);
+    this.listeners.forEach(l => l(this.pendingCount));
+  }
+
   async analyzeNewsAndPredict(
     apiKey: string,
     articles: NewsArticle[],
@@ -65,6 +92,7 @@ export class AIService implements IAIService {
     const prompt = buildRoundtablePrompt(articles, tickerContext);
 
     try {
+      AIService.increment();
       const model = getGeminiModel(apiKey, true); // Enable Google Search grounding
       const result = await generateContentWithRetry(model, prompt);
       const textResponse = result.response.text();
@@ -246,6 +274,8 @@ export class AIService implements IAIService {
     } catch (error) {
       console.error(`Gemini consolidated analysis failed for ${targetLabel}:`, error);
       throw error;
+    } finally {
+      AIService.decrement();
     }
   }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Activity, AlertTriangle, Clock } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -6,6 +6,7 @@ import { WatchlistPanel } from './components/WatchlistPanel';
 import { MarketOverview } from './components/MarketOverview';
 import { StockAnalysisDetail } from './components/StockAnalysisDetail';
 import type { AppSettings } from './types';
+import { AIService } from './services/ai';
 
 // Custom Hooks
 import { useAppSettings } from './hooks/useAppSettings';
@@ -16,6 +17,11 @@ import { useStockAnalysis } from './hooks/useStockAnalysis';
 
 export function App() {
   const { settings, saveSettings } = useAppSettings();
+  const [pendingRequests, setPendingRequests] = useState(0);
+
+  useEffect(() => {
+    return AIService.subscribe(setPendingRequests);
+  }, []);
   const { errorMessage, triggerError, closeError } = useErrorModal();
   const {
     watchlist,
@@ -71,7 +77,7 @@ export function App() {
 
   return (
     <div className="app-container">
-      <Navbar settings={settings} onOpenSettings={() => setIsSettingsOpen(true)} />
+      <Navbar settings={settings} onOpenSettings={() => setIsSettingsOpen(true)} pendingRequests={pendingRequests} />
 
       <div className="dashboard-grid">
         <div className="sidebar-column">

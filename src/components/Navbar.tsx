@@ -5,9 +5,10 @@ import type { AppSettings } from '../types';
 interface NavbarProps {
   settings: AppSettings;
   onOpenSettings: () => void;
+  pendingRequests?: number;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings }) => {
+export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendingRequests = 0 }) => {
   const currentDateStr = new Date().toLocaleDateString('en-US', {
     weekday: 'short',
     year: 'numeric',
@@ -31,9 +32,31 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings }) => {
         </span>
 
         {settings.mode === 'live' ? (
-          <div className="status-badge live" title="Directly using Gemini API client-side with real RSS news">
-            <span className="status-dot"></span>
-            Live AI Mode
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div className="status-badge live" title="Directly using Gemini API client-side with real RSS news">
+              <span className="status-dot"></span>
+              Live AI Mode
+            </div>
+            {pendingRequests > 0 && (
+              <div 
+                className="status-badge" 
+                style={{ 
+                  background: 'rgba(99, 102, 241, 0.12)', 
+                  color: 'var(--primary)', 
+                  borderColor: 'rgba(99, 102, 241, 0.25)', 
+                  fontSize: '0.75rem', 
+                  padding: '0.25rem 0.5rem', 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '0.35rem',
+                  animation: 'pulse-glow 2s infinite ease-in-out'
+                }}
+                title={`${pendingRequests} active request(s) currently calling Gemini API`}
+              >
+                <span className="status-dot" style={{ backgroundColor: 'var(--primary)', boxShadow: '0 0 6px var(--primary)' }}></span>
+                {pendingRequests} Gemini Request{pendingRequests > 1 ? 's' : ''}
+              </div>
+            )}
           </div>
         ) : (
           <div className="status-badge demo" title="Simulating stock market news and agent analyses">
