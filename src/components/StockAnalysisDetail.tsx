@@ -1,6 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, ChevronDown, Award, Lightbulb, AlertTriangle, MessageSquare, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
 import type { StockAnalysis, ArticleAnalysis } from '../types';
+
+interface LoadingMessage {
+  title: string;
+  description: string;
+}
+
+const LOADING_MESSAGES: LoadingMessage[] = [
+  { title: "Convening Analyst Roundtable", description: "Sarah, David, Elena, and Jack are debating the latest stock news and synthesizing the 14-day projection..." },
+  { title: "Filtering Signal from Noise", description: "Isolating raw headline data and discarding market hype to trace underlying volatility vectors..." },
+  { title: "Analyzing Value Moats", description: "David is evaluating long-term competitive advantages and discounted cash flows..." },
+  { title: "Tracking Option Sweepers", description: "Jack is monitoring institutional option blocks, call-to-put ratios, and order flows..." },
+  { title: "Modeling Macro Trajectories", description: "Elena is cross-referencing Federal Reserve statements, yields, and geopolitical risk factors..." },
+  { title: "Mapping Momentum Indicators", description: "Sarah is plotting moving averages, relative strength index deviations, and key support floors..." },
+  { title: "Synthesizing Consensus Vectors", description: "Reconciling contrasting daytrader momentum with value investor fundamental targets..." },
+  { title: "Polling Sentiment Indexes", description: "Aggregating crowd behavior and sentiment multipliers across major financial channels..." },
+  { title: "Running Regression Parameters", description: "Evaluating correlation weights between historical events and current market dynamics..." },
+  { title: "Assessing Liquidity Flows", description: "Measuring capital allocations, passive fund flows, and sector rotation indices..." },
+  { title: "Debating Valuation Multiples", description: "Comparing price-to-earnings growth (PEG) ratios against historical industry baselines..." },
+  { title: "Measuring Volatility Spikes", description: "Calculating implied volatility deviations to isolate standard market fluctuations..." },
+  { title: "Auditing Balance Sheets", description: "Checking debt-to-equity ratios, net profit margins, and operational cash generation rates..." },
+  { title: "Decoding Policy Signals", description: "Evaluating central bank interest rate decisions and liquidity tightening timetables..." },
+  { title: "Simulating Price Targets", description: "Projecting standard deviation charts and trading channels for the next 14 days..." },
+  { title: "Evaluating Supply Chains", description: "Sifting through international port delays and inventory shipment timelines..." },
+  { title: "Correlating News Catalysts", description: "Determining if recent headlines act as systemic drivers or short-term volatility events..." },
+  { title: "Structuring Decision Trees", description: "Parsing natural language arguments into quantitative directional vectors..." },
+  { title: "Scanning Social Channels", description: "Gauging retail investor psychology and speculative hype trends..." },
+  { title: "Compiling Consensus Reports", description: "Consolidating expert panel stances, confidence ratings, and key market risk warnings..." }
+];
 
 interface StockAnalysisDetailProps {
   stockAnalysis: StockAnalysis | null;
@@ -14,14 +42,25 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
   onRefreshAnalysis,
 }) => {
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
+  const [currentLoadingMessage, setCurrentLoadingMessage] = useState<LoadingMessage>(() => {
+    const randomIndex = Math.floor(Math.random() * LOADING_MESSAGES.length);
+    return LOADING_MESSAGES[randomIndex];
+  });
+
+  useEffect(() => {
+    if (isLoading) {
+      const randomIndex = Math.floor(Math.random() * LOADING_MESSAGES.length);
+      setCurrentLoadingMessage(LOADING_MESSAGES[randomIndex]);
+    }
+  }, [isLoading]);
 
   if (isLoading) {
     return (
       <div className="glass-panel analysis-running-overlay" style={{ minHeight: '450px' }}>
         <div className="loading-spinner"></div>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>Convening Analyst Roundtable</h3>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>{currentLoadingMessage.title}</h3>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', maxWidth: '300px' }}>
-          Sarah, David, Elena, and Jack are debating the latest stock news and synthesizing the 14-day projection...
+          {currentLoadingMessage.description}
         </p>
       </div>
     );
