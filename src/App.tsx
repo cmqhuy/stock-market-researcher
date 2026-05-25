@@ -283,7 +283,7 @@ export function App() {
     }
   };
 
-  // Trigger initial market and default stock analyses on mount
+  // Trigger initial market analysis on mount, and always refresh watchlist prices (quotes don't need API key)
   useEffect(() => {
     const now = Date.now();
     const isExpired = !marketState.timestamp || (now - marketState.timestamp > 15 * 60 * 1000);
@@ -294,35 +294,53 @@ export function App() {
     if (needsRefetch) {
       handleRunMarketAnalysis(settings);
     }
+
+    // Always refresh live prices on mount — Yahoo Finance quotes work in any mode, no Gemini key needed
+    const refreshAllQuotesOnMount = async () => {
+      try {
+        const updatedWatchlist = await Promise.all(
+          watchlist.map(async (stock) => {
+            try {
+              const quote = await fetchLiveStockQuote(stock.ticker);
+              return { ...stock, name: quote.name, price: quote.price, change: quote.change };
+            } catch {
+              return stock;
+            }
+          })
+        );
+        setWatchlist(updatedWatchlist);
+      } catch (err) {
+        console.warn('Failed to refresh watchlist quotes on mount:', err);
+      }
+    };
+    refreshAllQuotesOnMount();
   }, []);
 
-  // Refresh all watchlist prices with live quotes when settings change (in live mode)
+  // Refresh all watchlist prices when settings change — live quotes work in any mode (no API key needed)
   useEffect(() => {
-    if (settings.mode === 'live' && settings.apiKey) {
-      const refreshAllQuotes = async () => {
-        try {
-          const updatedWatchlist = await Promise.all(
-            watchlist.map(async (stock) => {
-              try {
-                const quote = await fetchLiveStockQuote(stock.ticker);
-                return {
-                  ...stock,
-                  name: quote.name,
-                  price: quote.price,
-                  change: quote.change
-                };
-              } catch (err) {
-                return stock;
-              }
-            })
-          );
-          setWatchlist(updatedWatchlist);
-        } catch (err) {
-          console.warn('Failed to refresh watchlist quotes:', err);
-        }
-      };
-      refreshAllQuotes();
-    }
+    const refreshAllQuotes = async () => {
+      try {
+        const updatedWatchlist = await Promise.all(
+          watchlist.map(async (stock) => {
+            try {
+              const quote = await fetchLiveStockQuote(stock.ticker);
+              return {
+                ...stock,
+                name: quote.name,
+                price: quote.price,
+                change: quote.change
+              };
+            } catch (err) {
+              return stock;
+            }
+          })
+        );
+        setWatchlist(updatedWatchlist);
+      } catch (err) {
+        console.warn('Failed to refresh watchlist quotes:', err);
+      }
+    };
+    refreshAllQuotes();
   }, [settings.mode, settings.apiKey]);
 
   // When selected ticker changes, load its analysis
@@ -355,12 +373,14 @@ export function App() {
       let price = 100;
       let change = 0;
 
-      if (settings.mode === 'live' && settings.apiKey) {
+      // Always fetch live price — Yahoo Finance works in any mode, no Gemini key needed
+      try {
         const quote = await fetchLiveStockQuote(cleanTicker);
         name = quote.name;
         price = quote.price;
         change = quote.change;
-      } else {
+      } catch {
+        // Fall back to mock data if Yahoo Finance is unavailable
         const existingMock = MOCK_TICKERS[cleanTicker];
         name = existingMock?.name || `${cleanTicker} Corporation`;
         price = existingMock?.price || 50 + Math.random() * 200;
