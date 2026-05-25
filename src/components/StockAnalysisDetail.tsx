@@ -35,12 +35,14 @@ interface StockAnalysisDetailProps {
   stockAnalysis: StockAnalysis | null;
   isLoading: boolean;
   onRefreshAnalysis: (ticker: string) => void;
+  isLiveMode: boolean;
 }
 
 export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
   stockAnalysis,
   isLoading,
   onRefreshAnalysis,
+  isLiveMode,
 }) => {
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
   const [currentLoadingMessage, setCurrentLoadingMessage] = useState<LoadingMessage>(() => {
@@ -97,6 +99,15 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
 
   return (
     <div className="stock-detail-view">
+      {isLiveMode && stockAnalysis && stockAnalysis.isSimulated && (
+        <div className="simulation-warning-banner">
+          <AlertTriangle className="warning-icon" size={16} />
+          <span>
+            <strong>Demo Simulation Mode Fallback:</strong> The live Gemini analysis failed to execute or is unavailable. Showing simulated stock projections.
+          </span>
+        </div>
+      )}
+
       {/* Selected Stock Header */}
       <div className="flex-between">
         <div>

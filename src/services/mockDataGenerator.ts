@@ -283,7 +283,8 @@ export const generateMockMarketAnalysis = (): MarketState => {
     news,
     newsAnalyses,
     lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    isSimulated: true
   };
 };
 
@@ -603,6 +604,7 @@ export const generateMockStockAnalysis = (ticker: string): StockAnalysis => {
     news,
     newsAnalyses,
     lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    isSimulated: true
   };
 };

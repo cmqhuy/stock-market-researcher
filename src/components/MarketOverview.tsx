@@ -5,9 +5,10 @@ import type { MarketState, ArticleAnalysis } from '../types';
 interface MarketOverviewProps {
   marketState: MarketState;
   isLoading: boolean;
+  isLiveMode: boolean;
 }
 
-export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isLoading }) => {
+export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isLoading, isLiveMode }) => {
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
 
   if (isLoading) {
@@ -54,6 +55,15 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
 
   return (
     <div className="stock-detail-view">
+      {isLiveMode && marketState.isSimulated && (
+        <div className="simulation-warning-banner">
+          <AlertTriangle className="warning-icon" size={16} />
+          <span>
+            <strong>Demo Simulation Mode Fallback:</strong> The live Gemini analysis failed to execute or is unavailable. Showing simulated market projections.
+          </span>
+        </div>
+      )}
+
       {/* 14-Day Forecast Banner */}
       <div className={`glass-panel forecast-banner ${prediction.stance}`}>
         <div className="forecast-header">

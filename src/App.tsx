@@ -154,7 +154,8 @@ export function App() {
           news: activeArticles,
           newsAnalyses,
           lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          isSimulated: false
         });
       } else {
         // Demo mode fallback
@@ -205,7 +206,8 @@ export function App() {
           news: activeArticles,
           newsAnalyses,
           lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          isSimulated: false
         };
 
         // Cache the analysis
@@ -424,12 +426,13 @@ export function App() {
 
         <div className="main-column">
           {selectedTicker === 'MARKET' ? (
-            <MarketOverview marketState={marketState} isLoading={isLoadingMarket} />
+            <MarketOverview marketState={marketState} isLoading={isLoadingMarket} isLiveMode={settings.mode === 'live'} />
           ) : (
             <StockAnalysisDetail
               stockAnalysis={stockAnalyses[selectedTicker] || null}
               isLoading={isLoadingStock}
               onRefreshAnalysis={(t) => handleRunStockAnalysis(t, settings)}
+              isLiveMode={settings.mode === 'live'}
             />
           )}
         </div>
