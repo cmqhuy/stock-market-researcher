@@ -32,8 +32,29 @@ export function App() {
   });
 
   const [selectedTicker, setSelectedTicker] = useState<string>('MARKET');
-  const [marketState, setMarketState] = useState<MarketState>(() => generateMockMarketAnalysis());
-  const [stockAnalyses, setStockAnalyses] = useState<Record<string, StockAnalysis>>({});
+  const [marketState, setMarketState] = useState<MarketState>(() => {
+    const savedMarket = localStorage.getItem('omega_market_analysis');
+    if (savedMarket) {
+      try {
+        return JSON.parse(savedMarket);
+      } catch (e) {
+        console.error('Failed to parse cached market state.');
+      }
+    }
+    return generateMockMarketAnalysis();
+  });
+
+  const [stockAnalyses, setStockAnalyses] = useState<Record<string, StockAnalysis>>(() => {
+    const savedAnalyses = localStorage.getItem('omega_stock_analyses');
+    if (savedAnalyses) {
+      try {
+        return JSON.parse(savedAnalyses);
+      } catch (e) {
+        console.error('Failed to parse cached stock analyses.');
+      }
+    }
+    return {};
+  });
   const [isLoadingMarket, setIsLoadingMarket] = useState<boolean>(false);
   const [isLoadingStock, setIsLoadingStock] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
@@ -43,6 +64,16 @@ export function App() {
   useEffect(() => {
     localStorage.setItem('watchlist_stocks', JSON.stringify(watchlist));
   }, [watchlist]);
+
+  // Sync stock analyses to localstorage
+  useEffect(() => {
+    localStorage.setItem('omega_stock_analyses', JSON.stringify(stockAnalyses));
+  }, [stockAnalyses]);
+
+  // Sync market state to localstorage
+  useEffect(() => {
+    localStorage.setItem('omega_market_analysis', JSON.stringify(marketState));
+  }, [marketState]);
 
   // Sync settings to localstorage
   const handleSaveSettings = (newSettings: AppSettings) => {
@@ -70,7 +101,8 @@ export function App() {
           prediction,
           news: activeArticles,
           newsAnalyses,
-          lastUpdated: new Date().toLocaleDateString()
+          lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
+          timestamp: Date.now()
         });
       } else {
         // Demo mode fallback
@@ -120,7 +152,8 @@ export function App() {
           prediction,
           news: activeArticles,
           newsAnalyses,
-          lastUpdated: new Date().toLocaleDateString(),
+          lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
+          timestamp: Date.now()
         };
 
         // Cache the analysis
@@ -196,7 +229,14 @@ export function App() {
 
   // Trigger initial market and default stock analyses on mount
   useEffect(() => {
-    handleRunMarketAnalysis(settings);
+    const now = Date.now();
+    const isExpired = !marketState.timestamp || (now - marketState.timestamp > 15 * 60 * 1000);
+    const isSimulated = !marketState.timestamp;
+    const needsRefetch = isExpired || (settings.mode === 'live' && isSimulated);
+
+    if (needsRefetch) {
+      handleRunMarketAnalysis(settings);
+    }
   }, []);
 
   // Refresh all watchlist prices with live quotes when settings change (in live mode)
@@ -230,8 +270,16 @@ export function App() {
 
   // When selected ticker changes, load its analysis
   useEffect(() => {
-    if (selectedTicker !== 'MARKET' && !stockAnalyses[selectedTicker]) {
-      handleRunStockAnalysis(selectedTicker, settings);
+    if (selectedTicker !== 'MARKET') {
+      const existing = stockAnalyses[selectedTicker];
+      const now = Date.now();
+      const isExpired = !existing || !existing.timestamp || (now - existing.timestamp > 15 * 60 * 1000);
+      const isSimulated = existing && !existing.timestamp;
+      const needsRefetch = isExpired || (settings.mode === 'live' && isSimulated);
+
+      if (needsRefetch) {
+        handleRunStockAnalysis(selectedTicker, settings);
+      }
     }
   }, [selectedTicker, stockAnalyses, settings, handleRunStockAnalysis]);
 

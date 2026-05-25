@@ -38,6 +38,7 @@ export interface StockAnalysis {
   news: NewsArticle[];
   newsAnalyses: Record<string, ArticleAnalysis>;
   lastUpdated: string;
+  timestamp?: number;
 }
 
 export interface MarketState {
@@ -45,6 +46,7 @@ export interface MarketState {
   news: NewsArticle[];
   newsAnalyses: Record<string, ArticleAnalysis>;
   lastUpdated: string;
+  timestamp?: number;
 }
 
 export interface AppSettings {

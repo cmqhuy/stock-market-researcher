@@ -15,6 +15,34 @@ function getGeminiModel(apiKey: string) {
 }
 
 /**
+ * Retries the Gemini generation with exponential backoff on 429 rate limit exceptions.
+ */
+async function generateContentWithRetry(
+  model: any,
+  prompt: string,
+  maxRetries = 3,
+  initialDelayMs = 2000
+): Promise<any> {
+  let delay = initialDelayMs;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await model.generateContent(prompt);
+    } catch (error: any) {
+      const errorStr = String(error);
+      const isRateLimit = errorStr.includes('429') || error?.status === 429 || errorStr.toLowerCase().includes('quota');
+      if (isRateLimit && attempt < maxRetries) {
+        console.warn(`Gemini API rate limited (429). Retrying in ${delay}ms (Attempt ${attempt}/${maxRetries})...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay *= 2; // exponential backoff
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+
+
+/**
  * Executes a single API call to Gemini to analyze multiple articles and synthesize the 14-day prediction.
  * This saves API calls to avoid rate limits (429) on the free tier.
  */
@@ -55,7 +83,7 @@ For each article, your panel of four distinct virtual experts must provide indiv
 For each agent on each article, provide:
 - stance: 'up' | 'down' | 'unchanged' (predicting the directional effect of this news on the target asset)
 - confidence: number between 0 and 100
-- commentary: a 2-4 sentence explanation detailing their specific logic.
+- commentary: a concise 1-2 sentence explanation detailing their core logic.
 
 Also provide a consensus summary for each article:
 - consensusStance: 'up' | 'down' | 'unchanged'
@@ -120,7 +148,7 @@ Your response must be a JSON object matching this structure:
 
   try {
     const model = getGeminiModel(apiKey);
-    const result = await model.generateContent(prompt);
+    const result = await generateContentWithRetry(model, prompt);
     const textResponse = result.response.text();
 
     if (!textResponse) {
