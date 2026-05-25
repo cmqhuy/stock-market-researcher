@@ -7,7 +7,7 @@ import type { NewsArticle, ArticleAnalysis, Prediction14Day } from '../types';
 function getGeminiModel(apiKey: string) {
   const genAI = new GoogleGenerativeAI(apiKey);
   return genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash', // We use gemini-1.5-flash as it is fast, cheap, and supports structured JSON outputs
+    model: 'gemini-2.5-flash', // We use gemini-2.5-flash as it is fast, cheap, and supports structured JSON outputs
     generationConfig: {
       responseMimeType: 'application/json',
     },
