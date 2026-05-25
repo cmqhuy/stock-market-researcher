@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, ChevronDown, Award, Lightbulb, AlertTriangle, MessageSquare, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
 import type { MarketState, ArticleAnalysis } from '../types';
+import { LoadingPanel } from './LoadingPanel';
 
 interface MarketOverviewProps {
   marketState: MarketState;
@@ -13,14 +14,7 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
 
   if (isLoading) {
-    return (
-      <div className="glass-panel shimmer-wrapper" style={{ minHeight: '400px' }}>
-        <div className="shimmer-block" style={{ width: '40%', height: '24px', marginBottom: '1.5rem' }} />
-        <div className="shimmer-block" style={{ width: '100%', height: '140px', marginBottom: '1rem' }} />
-        <div className="shimmer-block" style={{ width: '100%', height: '80px', marginBottom: '1rem' }} />
-        <div className="shimmer-block" style={{ width: '100%', height: '80px' }} />
-      </div>
-    );
+    return <LoadingPanel minHeight="400px" />;
   }
 
   const { prediction, news, newsAnalyses } = marketState;
