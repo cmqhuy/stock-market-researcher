@@ -1,560 +1,78 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Activity, AlertTriangle, Clock } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { SettingsPanel } from './components/SettingsPanel';
 import { WatchlistPanel } from './components/WatchlistPanel';
 import { MarketOverview } from './components/MarketOverview';
 import { StockAnalysisDetail } from './components/StockAnalysisDetail';
-import type { AppSettings, WatchlistStock, MarketState, StockAnalysis, NewsArticle } from './types';
-import { getMockWatchlist, generateMockMarketAnalysis, generateMockStockAnalysis, MOCK_TICKERS } from './services/mockDataGenerator';
-import { fetchLatestNews, fetchLiveStockQuote } from './services/newsService';
-import { analyzeNewsAndPredict } from './services/geminiService';
+import type { AppSettings } from './types';
 
-function parseRateLimitDelay(errorDetails: string): number | undefined {
-  const match = errorDetails.match(/Please retry in ([\d\.]+)s/i) || errorDetails.match(/retry in ([\d\.]+)s/i);
-  if (match && match[1]) {
-    const seconds = parseFloat(match[1]);
-    return Math.ceil(seconds);
-  }
-  return undefined;
-}
+// Custom Hooks
+import { useAppSettings } from './hooks/useAppSettings';
+import { useErrorModal } from './hooks/useErrorModal';
+import { useWatchlist } from './hooks/useWatchlist';
+import { useMarketAnalysis } from './hooks/useMarketAnalysis';
+import { useStockAnalysis } from './hooks/useStockAnalysis';
 
 export function App() {
-  // Load settings from localStorage or defaults
-  const [settings, setSettings] = useState<AppSettings>(() => {
-    const savedKey = localStorage.getItem('gemini_api_key') || '';
-    const savedMode = (localStorage.getItem('gemini_mode') as 'demo' | 'live') || 'demo';
-    return { apiKey: savedKey, mode: savedMode };
-  });
-
-  // Load watchlist from localStorage or defaults
-  const [watchlist, setWatchlist] = useState<WatchlistStock[]>(() => {
-    const savedWatchlist = localStorage.getItem('watchlist_stocks');
-    if (savedWatchlist) {
-      try {
-        return JSON.parse(savedWatchlist);
-      } catch (e) {
-        console.error('Failed to parse saved watchlist, using defaults.');
-      }
-    }
-    return getMockWatchlist();
-  });
+  const { settings, saveSettings } = useAppSettings();
+  const { errorMessage, triggerError, closeError } = useErrorModal();
+  const {
+    watchlist,
+    isLoadingQuote,
+    addStock,
+    removeStock,
+    reorderWatchlist,
+    setWatchlist,
+  } = useWatchlist(settings.mode);
 
   const [selectedTicker, setSelectedTicker] = useState<string>('MARKET');
-  const [marketState, setMarketState] = useState<MarketState>(() => {
-    const savedMarket = localStorage.getItem('omega_market_analysis');
-    if (savedMarket) {
-      try {
-        const parsed = JSON.parse(savedMarket);
-        if (parsed && typeof parsed === 'object' && parsed.prediction && Array.isArray(parsed.news)) {
-          parsed.newsAnalyses = parsed.newsAnalyses || {};
-          parsed.prediction.keyDrivers = Array.isArray(parsed.prediction.keyDrivers) ? parsed.prediction.keyDrivers : [];
-          parsed.prediction.mainRisks = Array.isArray(parsed.prediction.mainRisks) ? parsed.prediction.mainRisks : [];
-          return parsed;
-        }
-      } catch (e) {
-        console.error('Failed to parse cached market state, falling back to mock.');
-      }
-    }
-    return generateMockMarketAnalysis();
-  });
-
-  const [stockAnalyses, setStockAnalyses] = useState<Record<string, StockAnalysis>>(() => {
-    const savedAnalyses = localStorage.getItem('omega_stock_analyses');
-    if (savedAnalyses) {
-      try {
-        const parsed = JSON.parse(savedAnalyses);
-        if (parsed && typeof parsed === 'object') {
-          const validated: Record<string, StockAnalysis> = {};
-          Object.keys(parsed).forEach((ticker) => {
-            const item = parsed[ticker];
-            if (item && typeof item === 'object' && item.prediction && Array.isArray(item.news)) {
-              item.newsAnalyses = item.newsAnalyses || {};
-              item.prediction.keyDrivers = Array.isArray(item.prediction.keyDrivers) ? item.prediction.keyDrivers : [];
-              item.prediction.mainRisks = Array.isArray(item.prediction.mainRisks) ? item.prediction.mainRisks : [];
-              validated[ticker] = item;
-            }
-          });
-          return validated;
-        }
-      } catch (e) {
-        console.error('Failed to parse cached stock analyses.');
-      }
-    }
-    return {};
-  });
-  const [isLoadingMarket, setIsLoadingMarket] = useState<boolean>(false);
-  const [isLoadingStock, setIsLoadingStock] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<{
-    title: string;
-    message: string;
-    details?: string;
-    retryAfterSeconds?: number;
-  } | null>(null);
 
-  const triggerErrorModal = useCallback((title: string, error: unknown, defaultMessage: string) => {
-    const errorDetails = error instanceof Error ? error.message : String(error);
-    const isRateLimit = errorDetails.includes('429') || errorDetails.toLowerCase().includes('quota') || errorDetails.toLowerCase().includes('rate limit');
-    
-    let message = defaultMessage;
-    let retryAfterSeconds: number | undefined = undefined;
-    
-    if (isRateLimit) {
-      const parsedDelay = parseRateLimitDelay(errorDetails);
-      retryAfterSeconds = parsedDelay || 30; // default fallback if we couldn't parse
-      
-      message = `Gemini API rate limit exceeded (429). The Google AI Studio free tier limits you to 15 Requests Per Minute and a low request-per-project quota limit (usually 5 RPM). Please wait for the cooldown timer to finish before initiating another market analysis or refreshing.`;
-    }
-    
-    setErrorMessage({
-      title: isRateLimit ? 'API Rate Limit Exceeded' : title,
-      message,
-      details: errorDetails,
-      retryAfterSeconds
-    });
-  }, []);
+  const {
+    marketState,
+    isLoadingMarket,
+    runMarketAnalysis,
+  } = useMarketAnalysis(settings, triggerError);
 
-  // Handle rate limit modal countdown timer
-  useEffect(() => {
-    if (errorMessage && errorMessage.retryAfterSeconds !== undefined && errorMessage.retryAfterSeconds > 0) {
-      const timer = setTimeout(() => {
-        setErrorMessage(prev => {
-          if (!prev || prev.retryAfterSeconds === undefined) return prev;
-          return {
-            ...prev,
-            retryAfterSeconds: Math.max(0, prev.retryAfterSeconds - 1)
-          };
-        });
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [errorMessage]);
-
-  // Sync watchlist to localstorage
-  useEffect(() => {
-    localStorage.setItem('watchlist_stocks', JSON.stringify(watchlist));
-  }, [watchlist]);
-
-  // Sync stock analyses to localstorage
-  useEffect(() => {
-    localStorage.setItem('omega_stock_analyses', JSON.stringify(stockAnalyses));
-  }, [stockAnalyses]);
-
-  // Sync market state to localstorage
-  useEffect(() => {
-    localStorage.setItem('omega_market_analysis', JSON.stringify(marketState));
-  }, [marketState]);
-
-  // Sync settings to localstorage
-  const handleSaveSettings = (newSettings: AppSettings) => {
-    setSettings(newSettings);
-    localStorage.setItem('gemini_api_key', newSettings.apiKey);
-    localStorage.setItem('gemini_mode', newSettings.mode);
-  };
-
-  // Run general market analysis
-  const handleRunMarketAnalysis = useCallback(async (currentSettings: AppSettings) => {
-    setIsLoadingMarket(true);
-    try {
-      // ALWAYS fetch real market news headlines first
-      const articles = await fetchLatestNews();
-      const activeArticles = articles.slice(0, 10);
-
-      if (currentSettings.mode === 'live' && currentSettings.apiKey) {
-        // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
-        const { newsAnalyses, prediction, groundingArticles } = await analyzeNewsAndPredict(
-          currentSettings.apiKey,
-          activeArticles
-        );
-
-        // De-duplicate and merge grounding articles from Gemini search
-        const combinedArticles = [...activeArticles];
-        (groundingArticles || []).forEach(ga => {
-          const isDup = activeArticles.some(
-            aa => (aa.url && aa.url === ga.url) || 
-                  aa.title.toLowerCase().replace(/[^a-z0-9]/g, '') === ga.title.toLowerCase().replace(/[^a-z0-9]/g, '')
-          );
-          if (!isDup) combinedArticles.push(ga);
-        });
-
-        setMarketState({
-          prediction,
-          news: combinedArticles,
-          newsAnalyses,
-          lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
-          timestamp: Date.now(),
-          isSimulated: false
-        });
-      } else {
-        // Demo mode fallback — generate mock analyses but on REAL live articles!
-        const mockMarket = generateMockMarketAnalysis(activeArticles);
-        setMarketState(mockMarket);
-      }
-    } catch (error) {
-      console.error('Market analysis failed:', error);
-      triggerErrorModal(
-        'Market Analysis Failed',
-        error,
-        'Failed to execute Live Market Analysis. The app has fallen back to simulated data. Please verify your API key and connection.'
-      );
-      // Fetch latest news anyway so we show live news even in error fallback
-      let fallbackNews: NewsArticle[] = [];
-      try {
-        fallbackNews = (await fetchLatestNews()).slice(0, 10);
-      } catch {
-        // ignore
-      }
-      setMarketState({
-        ...generateMockMarketAnalysis(fallbackNews),
-        timestamp: 0 // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
-      });
-    } finally {
-      setIsLoadingMarket(false);
-    }
-  }, []);
-
-  // Run analysis for a specific stock ticker
-  const handleRunStockAnalysis = useCallback(async (ticker: string, currentSettings: AppSettings) => {
-    const cleanTicker = ticker.toUpperCase().trim();
-    const stockInfo = watchlist.find((s) => s.ticker === cleanTicker) || MOCK_TICKERS[cleanTicker];
-    const name = stockInfo?.name || `${cleanTicker} Inc.`;
-
-    setIsLoadingStock(true);
-    try {
-      // ALWAYS fetch real stock news and latest price/change in parallel
-      const [articles, quote] = await Promise.all([
-        fetchLatestNews(cleanTicker),
-        fetchLiveStockQuote(cleanTicker).catch(() => null)
-      ]);
-      const activeArticles = articles.slice(0, 10);
-      const nameToUse = quote?.name || name;
-
-      if (currentSettings.mode === 'live' && currentSettings.apiKey) {
-        // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
-        const { newsAnalyses, prediction, groundingArticles } = await analyzeNewsAndPredict(
-          currentSettings.apiKey,
-          activeArticles,
-          { ticker: cleanTicker, name: nameToUse }
-        );
-
-        // De-duplicate and merge grounding articles from Gemini search
-        const combinedArticles = [...activeArticles];
-        (groundingArticles || []).forEach(ga => {
-          const isDup = activeArticles.some(
-            aa => (aa.url && aa.url === ga.url) || 
-                  aa.title.toLowerCase().replace(/[^a-z0-9]/g, '') === ga.title.toLowerCase().replace(/[^a-z0-9]/g, '')
-          );
-          if (!isDup) combinedArticles.push(ga);
-        });
-
-        const finalAnalysis: StockAnalysis = {
-          ticker: cleanTicker,
-          name: nameToUse,
-          prediction,
-          news: combinedArticles,
-          newsAnalyses,
-          lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
-          timestamp: Date.now(),
-          isSimulated: false
-        };
-
-        // Cache the analysis
-        setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: finalAnalysis }));
-
-        // Update predictions, confidence scores, and current price/change in the watchlist
-        setWatchlist((prevWatchlist) =>
-          prevWatchlist.map((stock) =>
-            stock.ticker === cleanTicker
-              ? {
-                  ...stock,
-                  name: nameToUse,
-                  price: quote?.price || stock.price,
-                  change: quote?.change || stock.change,
-                  history: quote?.history && quote.history.length > 0 ? quote.history : stock.history,
-                  historyTimestamps: quote?.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps,
-                  prediction: prediction.stance,
-                  confidence: prediction.confidence,
-                }
-              : stock
-          )
-        );
-      } else {
-        // Demo mode fallback — generate mock analyses but on REAL live articles and update real price/change!
-        const mockAnalysis = generateMockStockAnalysis(cleanTicker, activeArticles);
-        setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: mockAnalysis }));
-
-        setWatchlist((prevWatchlist) =>
-          prevWatchlist.map((stock) =>
-            stock.ticker === cleanTicker
-              ? {
-                  ...stock,
-                  name: nameToUse,
-                  price: quote?.price || stock.price,
-                  change: quote?.change || stock.change,
-                  history: quote?.history && quote.history.length > 0 ? quote.history : stock.history,
-                  historyTimestamps: quote?.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps,
-                  prediction: mockAnalysis.prediction.stance,
-                  confidence: mockAnalysis.prediction.confidence,
-                }
-              : stock
-          )
-        );
-      }
-    } catch (error) {
-      console.error(`Stock analysis failed for ${cleanTicker}:`, error);
-      triggerErrorModal(
-        `Analysis Failed: ${cleanTicker}`,
-        error,
-        `Failed to analyze ${cleanTicker} in Live Mode. The app has fallen back to simulated data. Please verify your API key and connection.`
-      );
-      
-      // Fetch latest news and quote anyway so we show live news and live prices even in error fallback
-      let fallbackNews: NewsArticle[] = [];
-      let fallbackQuote: any = null;
-      try {
-        [fallbackNews, fallbackQuote] = await Promise.all([
-          fetchLatestNews(cleanTicker),
-          fetchLiveStockQuote(cleanTicker).catch(() => null)
-        ]);
-        fallbackNews = fallbackNews.slice(0, 10);
-      } catch {
-        // ignore
-      }
-
-      const mockAnalysis = { 
-        ...generateMockStockAnalysis(cleanTicker, fallbackNews), 
-        timestamp: 0 // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
-      };
-      
-      setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: mockAnalysis }));
-      setWatchlist((prevWatchlist) =>
-        prevWatchlist.map((stock) =>
-          stock.ticker === cleanTicker
-            ? {
-                ...stock,
-                price: fallbackQuote?.price || stock.price,
-                change: fallbackQuote?.change || stock.change,
-                history: fallbackQuote?.history && fallbackQuote.history.length > 0 ? fallbackQuote.history : stock.history,
-                historyTimestamps: fallbackQuote?.historyTimestamps && fallbackQuote.historyTimestamps.length > 0 ? fallbackQuote.historyTimestamps : stock.historyTimestamps,
-                prediction: mockAnalysis.prediction.stance,
-                confidence: mockAnalysis.prediction.confidence,
-              }
-            : stock
-        )
-      );
-    } finally {
-      setIsLoadingStock(false);
-    }
-  }, [watchlist]);
+  const {
+    stockAnalyses,
+    isLoadingStock,
+    runStockAnalysis,
+  } = useStockAnalysis(settings, watchlist, setWatchlist, selectedTicker, triggerError);
 
   // Handle setting modes / API Key
   const handleSaveSettingsAndTrigger = (newSettings: AppSettings) => {
-    handleSaveSettings(newSettings);
+    saveSettings(newSettings);
     // Re-run analyses based on the new settings
-    handleRunMarketAnalysis(newSettings);
+    runMarketAnalysis(newSettings);
     if (selectedTicker !== 'MARKET') {
-      handleRunStockAnalysis(selectedTicker, newSettings);
+      runStockAnalysis(selectedTicker, newSettings);
     }
   };
 
-  // Trigger initial market analysis on mount, and always refresh watchlist prices (quotes don't need API key)
-  useEffect(() => {
-    const now = Date.now();
-    const isExpired = !marketState.timestamp || (now - marketState.timestamp > 60 * 60 * 1000);
-    // Use the actual isSimulated flag — not the absence of timestamp (which was always false after we added timestamps to mocks)
-    const isSimulated = marketState.isSimulated === true;
-    const needsRefetch = isExpired || (settings.mode === 'live' && isSimulated);
-
-    if (needsRefetch) {
-      handleRunMarketAnalysis(settings);
-    }
-
-    // Always refresh live prices on mount — Yahoo Finance quotes work in any mode, no Gemini key needed
-    const refreshAllQuotesOnMount = async () => {
-      try {
-        const updatedWatchlist = await Promise.all(
-          watchlist.map(async (stock) => {
-            try {
-              const quote = await fetchLiveStockQuote(stock.ticker);
-              return { 
-                ...stock, 
-                name: quote.name, 
-                price: quote.price, 
-                change: quote.change,
-                history: quote.history && quote.history.length > 0 ? quote.history : stock.history,
-                historyTimestamps: quote.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps
-              };
-            } catch {
-              return stock;
-            }
-          })
-        );
-        setWatchlist(updatedWatchlist);
-      } catch (err) {
-        console.warn('Failed to refresh watchlist quotes on mount:', err);
-      }
-    };
-    refreshAllQuotesOnMount();
-  }, []);
-
-  // Refresh all watchlist prices when settings change — live quotes work in any mode (no API key needed)
-  useEffect(() => {
-    const refreshAllQuotes = async () => {
-      try {
-        const updatedWatchlist = await Promise.all(
-          watchlist.map(async (stock) => {
-            try {
-              const quote = await fetchLiveStockQuote(stock.ticker);
-              return {
-                ...stock,
-                name: quote.name,
-                price: quote.price,
-                change: quote.change,
-                history: quote.history && quote.history.length > 0 ? quote.history : stock.history,
-                historyTimestamps: quote.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps
-              };
-            } catch (err) {
-              return stock;
-            }
-          })
-        );
-        setWatchlist(updatedWatchlist);
-      } catch (err) {
-        console.warn('Failed to refresh watchlist quotes:', err);
-      }
-    };
-    refreshAllQuotes();
-  }, [settings.mode, settings.apiKey]);
-
-  // Polling for live watchlist prices every 15 seconds (Yahoo Finance endpoint)
-  useEffect(() => {
-    let active = true;
-    const pollInterval = setInterval(async () => {
-      if (watchlist.length === 0) return;
-      try {
-        const updatedWatchlist = await Promise.all(
-          watchlist.map(async (stock) => {
-            try {
-              const quote = await fetchLiveStockQuote(stock.ticker);
-              return {
-                ...stock,
-                name: quote.name || stock.name,
-                price: quote.price || stock.price,
-                change: quote.change !== undefined ? quote.change : stock.change,
-                history: quote.history && quote.history.length > 0 ? quote.history : stock.history,
-                historyTimestamps: quote.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps
-              };
-            } catch {
-              return stock;
-            }
-          })
-        );
-
-        if (!active) return;
-        
-        // Only update state if something changed (prices, changes, history arrays, or history timestamps)
-        setWatchlist(prev => {
-          const hasChanged = updatedWatchlist.some((updated, idx) => {
-            const current = prev[idx];
-            return !current || 
-                   current.price !== updated.price || 
-                   current.change !== updated.change ||
-                   JSON.stringify(current.history) !== JSON.stringify(updated.history) ||
-                   JSON.stringify(current.historyTimestamps) !== JSON.stringify(updated.historyTimestamps);
-          });
-          return hasChanged ? updatedWatchlist : prev;
-        });
-      } catch (err) {
-        console.warn('Watchlist live polling failed:', err);
-      }
-    }, 15000);
-
-    return () => {
-      active = false;
-      clearInterval(pollInterval);
-    };
-  }, [watchlist]);
-
-  // When selected ticker changes, load its analysis
-  useEffect(() => {
-    if (selectedTicker !== 'MARKET') {
-      const existing = stockAnalyses[selectedTicker];
-      const now = Date.now();
-      const isExpired = !existing || !existing.timestamp || (now - existing.timestamp > 60 * 60 * 1000);
-      // Use the actual isSimulated flag — not the absence of timestamp
-      const isSimulated = existing?.isSimulated === true;
-      const needsRefetch = isExpired || (settings.mode === 'live' && isSimulated);
-
-      if (needsRefetch) {
-        handleRunStockAnalysis(selectedTicker, settings);
-      }
-    }
-  }, [selectedTicker, stockAnalyses, settings, handleRunStockAnalysis]);
-
   // Watchlist Actions
   const handleAddStock = async (ticker: string) => {
-    const cleanTicker = ticker.toUpperCase().trim();
-    if (watchlist.some((s) => s.ticker === cleanTicker)) {
-      setSelectedTicker(cleanTicker);
-      return;
-    }
-
-    setIsLoadingStock(true);
     try {
-      let name = `${cleanTicker} Corporation`;
-      let price = 100;
-      let change = 0;
-
-      // Always fetch live price — Yahoo Finance works in any mode, no Gemini key needed
-      try {
-        const quote = await fetchLiveStockQuote(cleanTicker);
-        name = quote.name;
-        price = quote.price;
-        change = quote.change;
-      } catch {
-        // Fall back to mock data if Yahoo Finance is unavailable
-        const existingMock = MOCK_TICKERS[cleanTicker];
-        name = existingMock?.name || `${cleanTicker} Corporation`;
-        price = existingMock?.price || 50 + Math.random() * 200;
-        change = existingMock?.change || (Math.random() - 0.5) * 8;
+      const addedTicker = await addStock(ticker);
+      if (addedTicker) {
+        setSelectedTicker(addedTicker);
       }
-
-      const newStock: WatchlistStock = {
-        ticker: cleanTicker,
-        name,
-        price,
-        change,
-      };
-
-      setWatchlist((prev) => [...prev, newStock]);
-      setSelectedTicker(cleanTicker);
     } catch (err) {
-      console.error('Failed to add stock:', err);
-      const existingMock = MOCK_TICKERS[cleanTicker];
-      const newStock: WatchlistStock = {
-        ticker: cleanTicker,
-        name: existingMock?.name || `${cleanTicker} Corporation`,
-        price: existingMock?.price || 100,
-        change: existingMock?.change || 0,
-      };
-      setWatchlist((prev) => [...prev, newStock]);
-      setSelectedTicker(cleanTicker);
-    } finally {
-      setIsLoadingStock(false);
+      triggerError(
+        'Failed to Add Stock',
+        err,
+        `Failed to load stock data for ${ticker.toUpperCase()}. Please check the ticker symbol and your internet connection.`
+      );
     }
   };
 
   const handleRemoveStock = (ticker: string) => {
-    setWatchlist((prev) => prev.filter((s) => s.ticker !== ticker));
+    removeStock(ticker);
     if (selectedTicker === ticker) {
       setSelectedTicker('MARKET');
     }
   };
-
-  const handleReorderWatchlist = useCallback((newWatchlist: WatchlistStock[]) => {
-    setWatchlist(newWatchlist);
-  }, []);
 
   return (
     <div className="app-container">
@@ -581,8 +99,8 @@ export function App() {
             onSelectStock={setSelectedTicker}
             onAddStock={handleAddStock}
             onRemoveStock={handleRemoveStock}
-            isLoading={isLoadingStock}
-            onReorderWatchlist={handleReorderWatchlist}
+            isLoading={isLoadingStock || isLoadingQuote}
+            onReorderWatchlist={reorderWatchlist}
           />
         </div>
 
@@ -592,13 +110,13 @@ export function App() {
               marketState={marketState}
               isLoading={isLoadingMarket}
               isLiveMode={settings.mode === 'live'}
-              onRefreshMarket={() => handleRunMarketAnalysis(settings)}
+              onRefreshMarket={() => runMarketAnalysis(settings)}
             />
           ) : (
             <StockAnalysisDetail
               stockAnalysis={stockAnalyses[selectedTicker] || null}
               isLoading={isLoadingStock}
-              onRefreshAnalysis={(t) => handleRunStockAnalysis(t, settings)}
+              onRefreshAnalysis={(t) => runStockAnalysis(t, settings)}
               isLiveMode={settings.mode === 'live'}
             />
           )}
@@ -705,7 +223,7 @@ export function App() {
 
             <button
               className="btn-primary"
-              onClick={() => setErrorMessage(null)}
+              onClick={closeError}
               style={{
                 marginTop: '1.25rem',
                 width: '100%',

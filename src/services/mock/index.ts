@@ -1,6 +1,12 @@
-import type { StockAnalysis, MarketState, NewsArticle, ArticleAnalysis, AgentAnalysis, Prediction14Day, WatchlistStock } from '../types';
-
-// Helper to generate dates relative to today
+import type { 
+  StockAnalysis, 
+  MarketState, 
+  NewsArticle, 
+  ArticleAnalysis, 
+  AgentAnalysis, 
+  Prediction14Day, 
+  WatchlistStock 
+} from '../../types';
 
 // Standard mock tickers
 export const MOCK_TICKERS: Record<string, { name: string; price: number; change: number }> = {
@@ -12,8 +18,6 @@ export const MOCK_TICKERS: Record<string, { name: string; price: number; change:
   GOOGL: { name: 'Alphabet Inc.', price: 173.96, change: 0.54 },
   META: { name: 'Meta Platforms Inc.', price: 475.20, change: -1.10 },
 };
-
-
 
 // Helper to generate dates relative to today
 const getRelativeDateStr = (daysAgo: number, hoursAgo: number): string => {
@@ -502,7 +506,7 @@ export const generateMockMarketAnalysis = (customNews?: NewsArticle[]): MarketSt
 const MOCK_STOCK_NEWS_TEMPLATES: Record<string, Array<{ title: string; source: string; summary: string; impact: 'up' | 'down' | 'unchanged' }>> = {
   AAPL: [
     {
-      title: 'Apple Announces On-Device Gemini Integration for iOS 18, Boosting Siri Capabilities',
+      title: 'Apple Announces On-Device Gemini Integration for iOS 18, Siri Capabilities Upgraded',
       source: 'TechCrunch',
       summary: 'Apple has solidified a partnership with Google to integrate advanced Gemini models directly into iOS 18. The move is expected to dramatically enhance Siri and device productivity tools, prompting upgrading cycles.',
       impact: 'up'
@@ -804,9 +808,9 @@ export const generateMockStockAnalysis = (ticker: string, customNews?: NewsArtic
     finalConfidence = 55 + Math.floor(Math.random() * 15);
     summary = `The 14-day projection is neutral. ${cleanTicker} is locked in a consolidation pattern, with robust fundamental support balanced out by near-term technical resistance.`;
     keyDrivers = [
-      `Balanced buyer/seller activity at current valuation levels.`,
-      `Solid fundamentals offsetting short-term growth concerns.`,
-      `Range-bound price action awaiting the next earnings catalyst.`
+      `Balanced net options open interest profiles.`,
+      `Absence of near-term major policy decision catalysts.`,
+      `Consolidation around institutional value zones.`
     ];
     mainRisks = [
       `Breakout above near-term resistance on unexpected volume.`,
