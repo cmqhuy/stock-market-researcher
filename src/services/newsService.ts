@@ -1,5 +1,5 @@
 import type { NewsArticle } from '../types';
-import { generateMockMarketAnalysis, generateMockStockAnalysis } from './mockDataGenerator';
+import { generateMockMarketAnalysis, generateMockStockAnalysis, getMockWatchlist } from './mockDataGenerator';
 
 /**
  * Fetches news from Yahoo Finance RSS feed via a public CORS proxy.
@@ -120,5 +120,89 @@ function formatDateString(dateStr: string): string {
     });
   } catch (e) {
     return dateStr;
+  }
+}
+
+export interface StockQuote {
+  ticker: string;
+  name: string;
+  price: number;
+  change: number;
+}
+
+/**
+ * Fetches live stock details (current price and change percentage) from Yahoo Finance.
+ */
+export async function fetchLiveStockQuote(ticker: string): Promise<StockQuote> {
+  const cleanTicker = ticker.toUpperCase().trim();
+  // Using Yahoo Finance Chart API
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${cleanTicker}?interval=1d&range=1d`;
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+
+  try {
+    const response = await fetch(proxyUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+    const data = await response.json();
+    const result = data?.chart?.result?.[0];
+    const meta = result?.meta;
+    
+    if (!meta) {
+      throw new Error("No metadata returned from Yahoo API");
+    }
+
+    const price = meta.regularMarketPrice;
+    const prevClose = meta.previousClose || meta.chartPreviousClose || price;
+    const change = prevClose !== 0 ? ((price - prevClose) / prevClose) * 100 : 0;
+    
+    // Common mappings to display nice names
+    const commonNames: Record<string, string> = {
+      AAPL: 'Apple Inc.',
+      MSFT: 'Microsoft Corporation',
+      GOOGL: 'Alphabet Inc. (Class A)',
+      GOOG: 'Alphabet Inc. (Class C)',
+      AMZN: 'Amazon.com, Inc.',
+      NVDA: 'NVIDIA Corporation',
+      TSLA: 'Tesla, Inc.',
+      META: 'Meta Platforms, Inc.',
+      SPY: 'SPDR S&P 500 ETF Trust',
+      QQQ: 'Invesco QQQ Trust',
+      DIA: 'SPDR Dow Jones Industrial Average ETF Trust'
+    };
+
+    let name = cleanTicker;
+    if (commonNames[cleanTicker]) {
+      name = commonNames[cleanTicker];
+    } else {
+      name = `${cleanTicker} Corporation`;
+    }
+
+    return {
+      ticker: cleanTicker,
+      name,
+      price,
+      change
+    };
+  } catch (error) {
+    console.warn(`Failed to fetch live quote for ${cleanTicker}:`, error);
+    // Fall back to mock data
+    const mockStocks = getMockWatchlist();
+    const existingMock = mockStocks.find(s => s.ticker === cleanTicker);
+    if (existingMock) {
+      return {
+        ticker: cleanTicker,
+        name: existingMock.name,
+        price: existingMock.price,
+        change: existingMock.change
+      };
+    }
+    
+    return {
+      ticker: cleanTicker,
+      name: `${cleanTicker} Corporation`,
+      price: 100 + Math.random() * 200,
+      change: (Math.random() - 0.5) * 5
+    };
   }
 }

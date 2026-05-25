@@ -7,7 +7,7 @@ import { MarketOverview } from './components/MarketOverview';
 import { StockAnalysisDetail } from './components/StockAnalysisDetail';
 import type { AppSettings, WatchlistStock, MarketState, StockAnalysis } from './types';
 import { getMockWatchlist, generateMockMarketAnalysis, generateMockStockAnalysis, MOCK_TICKERS } from './services/mockDataGenerator';
-import { fetchLatestNews } from './services/newsService';
+import { fetchLatestNews, fetchLiveStockQuote } from './services/newsService';
 import { analyzeNewsAndPredict } from './services/geminiService';
 
 export function App() {
@@ -99,20 +99,24 @@ export function App() {
     setIsLoadingStock(true);
     try {
       if (currentSettings.mode === 'live' && currentSettings.apiKey) {
-        // Fetch real stock news from Yahoo Finance RSS
-        const articles = await fetchLatestNews(cleanTicker);
+        // Fetch real stock news and latest price/change in parallel
+        const [articles, quote] = await Promise.all([
+          fetchLatestNews(cleanTicker),
+          fetchLiveStockQuote(cleanTicker).catch(() => null)
+        ]);
         const activeArticles = articles.slice(0, 5); // Limit to 5 articles to keep context clean and fast
+        const nameToUse = quote?.name || name;
 
         // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
         const { newsAnalyses, prediction } = await analyzeNewsAndPredict(
           currentSettings.apiKey,
           activeArticles,
-          { ticker: cleanTicker, name }
+          { ticker: cleanTicker, name: nameToUse }
         );
 
         const finalAnalysis: StockAnalysis = {
           ticker: cleanTicker,
-          name,
+          name: nameToUse,
           prediction,
           news: activeArticles,
           newsAnalyses,
@@ -122,12 +126,15 @@ export function App() {
         // Cache the analysis
         setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: finalAnalysis }));
 
-        // Update predictions and confidence scores in the watchlist
+        // Update predictions, confidence scores, and current price/change in the watchlist
         setWatchlist((prevWatchlist) =>
           prevWatchlist.map((stock) =>
             stock.ticker === cleanTicker
               ? {
                   ...stock,
+                  name: nameToUse,
+                  price: quote?.price || stock.price,
+                  change: quote?.change || stock.change,
                   prediction: prediction.stance,
                   confidence: prediction.confidence,
                 }
@@ -192,6 +199,35 @@ export function App() {
     handleRunMarketAnalysis(settings);
   }, []);
 
+  // Refresh all watchlist prices with live quotes when settings change (in live mode)
+  useEffect(() => {
+    if (settings.mode === 'live' && settings.apiKey) {
+      const refreshAllQuotes = async () => {
+        try {
+          const updatedWatchlist = await Promise.all(
+            watchlist.map(async (stock) => {
+              try {
+                const quote = await fetchLiveStockQuote(stock.ticker);
+                return {
+                  ...stock,
+                  name: quote.name,
+                  price: quote.price,
+                  change: quote.change
+                };
+              } catch (err) {
+                return stock;
+              }
+            })
+          );
+          setWatchlist(updatedWatchlist);
+        } catch (err) {
+          console.warn('Failed to refresh watchlist quotes:', err);
+        }
+      };
+      refreshAllQuotes();
+    }
+  }, [settings.mode, settings.apiKey]);
+
   // When selected ticker changes, load its analysis
   useEffect(() => {
     if (selectedTicker !== 'MARKET' && !stockAnalyses[selectedTicker]) {
@@ -207,22 +243,47 @@ export function App() {
       return;
     }
 
-    // Determine details
-    const existingMock = MOCK_TICKERS[cleanTicker];
-    const name = existingMock?.name || `${cleanTicker} Corporation`;
-    const price = existingMock?.price || 50 + Math.random() * 200;
-    const change = existingMock?.change || (Math.random() - 0.5) * 8; // -4% to +4%
+    setIsLoadingStock(true);
+    try {
+      let name = `${cleanTicker} Corporation`;
+      let price = 100;
+      let change = 0;
 
-    const newStock: WatchlistStock = {
-      ticker: cleanTicker,
-      name,
-      price,
-      change,
-    };
+      if (settings.mode === 'live' && settings.apiKey) {
+        const quote = await fetchLiveStockQuote(cleanTicker);
+        name = quote.name;
+        price = quote.price;
+        change = quote.change;
+      } else {
+        const existingMock = MOCK_TICKERS[cleanTicker];
+        name = existingMock?.name || `${cleanTicker} Corporation`;
+        price = existingMock?.price || 50 + Math.random() * 200;
+        change = existingMock?.change || (Math.random() - 0.5) * 8;
+      }
 
-    setWatchlist((prev) => [...prev, newStock]);
-    setSelectedTicker(cleanTicker);
-    // Analysis is triggered automatically by the selection useEffect hook
+      const newStock: WatchlistStock = {
+        ticker: cleanTicker,
+        name,
+        price,
+        change,
+      };
+
+      setWatchlist((prev) => [...prev, newStock]);
+      setSelectedTicker(cleanTicker);
+    } catch (err) {
+      console.error('Failed to add stock:', err);
+      const existingMock = MOCK_TICKERS[cleanTicker];
+      const newStock: WatchlistStock = {
+        ticker: cleanTicker,
+        name: existingMock?.name || `${cleanTicker} Corporation`,
+        price: existingMock?.price || 100,
+        change: existingMock?.change || 0,
+      };
+      setWatchlist((prev) => [...prev, newStock]);
+      setSelectedTicker(cleanTicker);
+    } finally {
+      setIsLoadingStock(false);
+    }
   };
 
   const handleRemoveStock = (ticker: string) => {
