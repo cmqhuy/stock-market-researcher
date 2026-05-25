@@ -89,22 +89,41 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 API key is not required in Demo Simulation Mode.
               </span>
             ) : (
-              <div className="security-notice-box" style={{
-                background: 'rgba(16, 185, 129, 0.04)',
-                border: '1px solid rgba(16, 185, 129, 0.15)',
-                borderRadius: '8px',
-                padding: '0.75rem',
-                fontSize: '0.75rem',
-                color: 'var(--text-muted)',
-                display: 'flex',
-                gap: '0.5rem',
-                alignItems: 'flex-start',
-                marginTop: '0.25rem'
-              }}>
-                <Lock size={14} style={{ color: 'var(--up-color)', flexShrink: 0, marginTop: '2px' }} />
-                <div>
-                  <strong style={{ color: 'var(--text-main)', display: 'block', marginBottom: '0.15rem' }}>Local Storage Security (BYOK)</strong>
-                  Your API key is saved directly in your browser's local storage and never sent to any external server other than Google's official Gemini API endpoint.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
+                <div className="key-guide-box" style={{
+                  background: 'rgba(99, 102, 241, 0.04)',
+                  border: '1px solid rgba(99, 102, 241, 0.15)',
+                  borderRadius: '8px',
+                  padding: '0.75rem',
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  display: 'flex',
+                  gap: '0.5rem',
+                  alignItems: 'flex-start'
+                }}>
+                  <HelpCircle size={14} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <strong style={{ color: 'var(--text-main)', display: 'block', marginBottom: '0.15rem' }}>How to get an API Key</strong>
+                    Get a free API key from the <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline', fontWeight: 600 }}>Google AI Studio Console</a>. Make sure your key has access to Gemini models.
+                  </div>
+                </div>
+
+                <div className="security-notice-box" style={{
+                  background: 'rgba(16, 185, 129, 0.04)',
+                  border: '1px solid rgba(16, 185, 129, 0.15)',
+                  borderRadius: '8px',
+                  padding: '0.75rem',
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  display: 'flex',
+                  gap: '0.5rem',
+                  alignItems: 'flex-start'
+                }}>
+                  <Lock size={14} style={{ color: 'var(--up-color)', flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <strong style={{ color: 'var(--text-main)', display: 'block', marginBottom: '0.15rem' }}>Local Storage Security (BYOK)</strong>
+                    Your API key is saved directly in your browser's local storage and never sent to any external server other than Google's official Gemini API endpoint.
+                  </div>
                 </div>
               </div>
             )}
