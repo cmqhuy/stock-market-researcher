@@ -271,6 +271,8 @@ export function App() {
                   name: nameToUse,
                   price: quote?.price || stock.price,
                   change: quote?.change || stock.change,
+                  history: quote?.history && quote.history.length > 0 ? quote.history : stock.history,
+                  historyTimestamps: quote?.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps,
                   prediction: prediction.stance,
                   confidence: prediction.confidence,
                 }
@@ -290,6 +292,8 @@ export function App() {
                   name: nameToUse,
                   price: quote?.price || stock.price,
                   change: quote?.change || stock.change,
+                  history: quote?.history && quote.history.length > 0 ? quote.history : stock.history,
+                  historyTimestamps: quote?.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps,
                   prediction: mockAnalysis.prediction.stance,
                   confidence: mockAnalysis.prediction.confidence,
                 }
@@ -331,6 +335,8 @@ export function App() {
                 ...stock,
                 price: fallbackQuote?.price || stock.price,
                 change: fallbackQuote?.change || stock.change,
+                history: fallbackQuote?.history && fallbackQuote.history.length > 0 ? fallbackQuote.history : stock.history,
+                historyTimestamps: fallbackQuote?.historyTimestamps && fallbackQuote.historyTimestamps.length > 0 ? fallbackQuote.historyTimestamps : stock.historyTimestamps,
                 prediction: mockAnalysis.prediction.stance,
                 confidence: mockAnalysis.prediction.confidence,
               }
@@ -371,7 +377,14 @@ export function App() {
           watchlist.map(async (stock) => {
             try {
               const quote = await fetchLiveStockQuote(stock.ticker);
-              return { ...stock, name: quote.name, price: quote.price, change: quote.change };
+              return { 
+                ...stock, 
+                name: quote.name, 
+                price: quote.price, 
+                change: quote.change,
+                history: quote.history && quote.history.length > 0 ? quote.history : stock.history,
+                historyTimestamps: quote.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps
+              };
             } catch {
               return stock;
             }
@@ -397,7 +410,9 @@ export function App() {
                 ...stock,
                 name: quote.name,
                 price: quote.price,
-                change: quote.change
+                change: quote.change,
+                history: quote.history && quote.history.length > 0 ? quote.history : stock.history,
+                historyTimestamps: quote.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps
               };
             } catch (err) {
               return stock;
@@ -411,6 +426,55 @@ export function App() {
     };
     refreshAllQuotes();
   }, [settings.mode, settings.apiKey]);
+
+  // Polling for live watchlist prices every 15 seconds (Yahoo Finance endpoint)
+  useEffect(() => {
+    let active = true;
+    const pollInterval = setInterval(async () => {
+      if (watchlist.length === 0) return;
+      try {
+        const updatedWatchlist = await Promise.all(
+          watchlist.map(async (stock) => {
+            try {
+              const quote = await fetchLiveStockQuote(stock.ticker);
+              return {
+                ...stock,
+                name: quote.name || stock.name,
+                price: quote.price || stock.price,
+                change: quote.change !== undefined ? quote.change : stock.change,
+                history: quote.history && quote.history.length > 0 ? quote.history : stock.history,
+                historyTimestamps: quote.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps
+              };
+            } catch {
+              return stock;
+            }
+          })
+        );
+
+        if (!active) return;
+        
+        // Only update state if something changed (prices, changes, history arrays, or history timestamps)
+        setWatchlist(prev => {
+          const hasChanged = updatedWatchlist.some((updated, idx) => {
+            const current = prev[idx];
+            return !current || 
+                   current.price !== updated.price || 
+                   current.change !== updated.change ||
+                   JSON.stringify(current.history) !== JSON.stringify(updated.history) ||
+                   JSON.stringify(current.historyTimestamps) !== JSON.stringify(updated.historyTimestamps);
+          });
+          return hasChanged ? updatedWatchlist : prev;
+        });
+      } catch (err) {
+        console.warn('Watchlist live polling failed:', err);
+      }
+    }, 15000);
+
+    return () => {
+      active = false;
+      clearInterval(pollInterval);
+    };
+  }, [watchlist]);
 
   // When selected ticker changes, load its analysis
   useEffect(() => {
@@ -488,6 +552,10 @@ export function App() {
     }
   };
 
+  const handleReorderWatchlist = useCallback((newWatchlist: WatchlistStock[]) => {
+    setWatchlist(newWatchlist);
+  }, []);
+
   return (
     <div className="app-container">
       <Navbar settings={settings} onOpenSettings={() => setIsSettingsOpen(true)} />
@@ -514,6 +582,7 @@ export function App() {
             onAddStock={handleAddStock}
             onRemoveStock={handleRemoveStock}
             isLoading={isLoadingStock}
+            onReorderWatchlist={handleReorderWatchlist}
           />
         </div>
 

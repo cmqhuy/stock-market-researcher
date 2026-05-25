@@ -345,7 +345,7 @@ h2.panel-title {
 
 /* Watchlist UI */
 .watchlist-container {
-  padding: 1.25rem;
+  padding: 1.25rem 1rem;
 }
 
 .watchlist-form {
@@ -365,14 +365,14 @@ h2.panel-title {
 }
 
 .watchlist-card {
-  padding: 0.85rem 1rem;
+  padding: 0.75rem 0.65rem;
   cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(13, 20, 38, 0.35);
   display: grid;
-  grid-template-columns: 110px 70px 1fr;
+  grid-template-columns: 16px 85px 70px minmax(0, 1fr) 18px 24px;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   border-radius: 12px;
   transition: all 0.2s ease;
 }
@@ -389,10 +389,37 @@ h2.panel-title {
   box-shadow: inset 0 0 12px rgba(99, 102, 241, 0.1);
 }
 
+.watchlist-card.dragging {
+  opacity: 0.45;
+  border: 1px dashed var(--primary);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.watchlist-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dark);
+  cursor: grab;
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+  align-self: start;
+  margin-top: 0.25rem;
+}
+
+.watchlist-card:hover .watchlist-drag-handle {
+  opacity: 0.8;
+}
+
+.watchlist-drag-handle:active {
+  cursor: grabbing;
+}
+
 .watchlist-card-left {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  min-width: 0;
 }
 
 .ticker-symbol {
@@ -405,17 +432,16 @@ h2.panel-title {
 .ticker-name {
   font-size: 0.75rem;
   color: var(--text-muted);
-  max-width: 105px;
+  max-width: 85px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.watchlist-card-right {
+.watchlist-sparkline-wrapper {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.6rem;
+  justify-content: center;
 }
 
 .ticker-price-container {
@@ -423,6 +449,7 @@ h2.panel-title {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
+  justify-self: end;
 }
 
 .ticker-price {
@@ -439,22 +466,84 @@ h2.panel-title {
 .ticker-change.up { color: var(--up-color); }
 .ticker-change.down { color: var(--down-color); }
 
+.watchlist-trend-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: start;
+  margin-top: 0.25rem;
+}
+
 .btn-remove {
   background: transparent;
   border: none;
   color: var(--text-dark);
   cursor: pointer;
-  padding: 0.25rem;
+  width: 24px;
+  height: 24px;
+  padding: 0;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  justify-self: center;
+  align-self: start;
+  margin-top: -0.08rem;
 }
 
 .btn-remove:hover {
   color: var(--down-color);
   background: rgba(239, 68, 68, 0.1);
+}
+
+.sparkline-point-group:hover .sparkline-dot {
+  opacity: 1 !important;
+}
+
+/* Premium Glassmorphic Tooltip for Sparkline Charts */
+.sparkline-tooltip {
+  background: rgba(13, 20, 38, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 6px 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(99, 102, 241, 0.15);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
+  animation: tooltip-fade-in 0.15s ease-out;
+}
+
+@keyframes tooltip-fade-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -110%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -120%);
+  }
+}
+
+.sparkline-tooltip .tooltip-price {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.sparkline-tooltip .tooltip-date {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 /* Predictions Banner */
@@ -1289,4 +1378,45 @@ h2.panel-title {
 .simulation-warning-banner .warning-icon {
   flex-shrink: 0;
   color: #fbbf24;
+}
+
+/* LIVE Price Badge & Pulsing Animation */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--up-color);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  margin-left: auto;
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  line-height: 1;
+}
+
+.live-dot {
+  width: 5px;
+  height: 5px;
+  background-color: var(--up-color);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--up-color);
+  animation: pulse-live 1.8s infinite;
+}
+
+@keyframes pulse-live {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
 }

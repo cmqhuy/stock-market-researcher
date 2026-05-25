@@ -6,7 +6,7 @@ import type { StockAnalysis, MarketState, NewsArticle, ArticleAnalysis, AgentAna
 export const MOCK_TICKERS: Record<string, { name: string; price: number; change: number }> = {
   AAPL: { name: 'Apple Inc.', price: 189.84, change: 1.25 },
   MSFT: { name: 'Microsoft Corporation', price: 421.90, change: -0.45 },
-  NVDA: { name: 'NVIDIA Corporation', price: 948.79, change: 3.82 },
+  NVDA: { name: 'NVIDIA Corporation', price: 215.33, change: -1.90 },
   TSLA: { name: 'Tesla Inc.', price: 179.24, change: -2.18 },
   AMZN: { name: 'Amazon.com Inc.', price: 180.75, change: 0.88 },
   GOOGL: { name: 'Alphabet Inc.', price: 173.96, change: 0.54 },

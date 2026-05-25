@@ -63,4 +63,6 @@ export interface WatchlistStock {
   change: number; // percentage
   prediction?: 'up' | 'down' | 'unchanged';
   confidence?: number;
+  history?: number[];
+  historyTimestamps?: number[];
 }
