@@ -9,7 +9,8 @@ const aiService = new AIService();
 
 export function useMarketAnalysis(
   settings: AppSettings,
-  triggerError: (title: string, error: unknown, defaultMessage: string) => void
+  triggerError: (title: string, error: unknown, defaultMessage: string) => void,
+  isActive = true
 ) {
   const [marketState, setMarketState] = useState<MarketState>(() => {
     const savedMarket = localStorage.getItem('omega_market_analysis');
@@ -33,6 +34,7 @@ export function useMarketAnalysis(
 
   const lastUsedKeyRef = useRef(settings.apiKey);
   const lastUsedModeRef = useRef(settings.mode);
+  const inFlightRef = useRef(false);
 
   // Sync market state to localStorage
   useEffect(() => {
@@ -40,6 +42,8 @@ export function useMarketAnalysis(
   }, [marketState]);
 
   const runMarketAnalysis = useCallback(async (currentSettings: AppSettings) => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setIsLoadingMarket(true);
     try {
       // ALWAYS fetch real market news headlines first
@@ -123,11 +127,13 @@ export function useMarketAnalysis(
       });
     } finally {
       setIsLoadingMarket(false);
+      inFlightRef.current = false;
     }
   }, [triggerError]);
 
   // Run initial market analysis on mount if expired or configuration changes
   useEffect(() => {
+    if (!isActive) return;
     const now = Date.now();
     const isExpired = !marketState.timestamp || (now - marketState.timestamp > 60 * 60 * 1000);
     const isSimulated = marketState.isSimulated === true;
@@ -144,7 +150,7 @@ export function useMarketAnalysis(
       lastUsedModeRef.current = settings.mode;
       runMarketAnalysis(settings);
     }
-  }, [settings, runMarketAnalysis]);
+  }, [settings, runMarketAnalysis, isActive]);
 
   return {
     marketState,

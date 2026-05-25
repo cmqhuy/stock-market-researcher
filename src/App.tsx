@@ -33,7 +33,7 @@ export function App() {
     marketState,
     isLoadingMarket,
     runMarketAnalysis,
-  } = useMarketAnalysis(settings, triggerError);
+  } = useMarketAnalysis(settings, triggerError, selectedTicker === 'MARKET');
 
   const {
     stockAnalyses,

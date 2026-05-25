@@ -46,6 +46,7 @@ export function useStockAnalysis(
   const lastUsedKeyRef = useRef(settings.apiKey);
   const lastUsedModeRef = useRef(settings.mode);
   const lastSelectedTickerRef = useRef(selectedTicker);
+  const inFlightRef = useRef<Record<string, boolean>>({});
 
   // Sync stock analyses to localStorage
   useEffect(() => {
@@ -54,6 +55,9 @@ export function useStockAnalysis(
 
   const runStockAnalysis = useCallback(async (ticker: string, currentSettings: AppSettings) => {
     const cleanTicker = ticker.toUpperCase().trim();
+    if (inFlightRef.current[cleanTicker]) return;
+    inFlightRef.current[cleanTicker] = true;
+
     const stockInfo = watchlist.find((s) => s.ticker === cleanTicker) || MOCK_TICKERS[cleanTicker];
     const name = stockInfo?.name || `${cleanTicker} Inc.`;
 
@@ -211,6 +215,7 @@ export function useStockAnalysis(
       );
     } finally {
       setIsLoadingStock(false);
+      inFlightRef.current[cleanTicker] = false;
     }
   }, [watchlist, setWatchlist, triggerError]);
 
