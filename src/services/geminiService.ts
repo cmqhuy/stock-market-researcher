@@ -47,10 +47,10 @@ News Articles to analyze:
 ${JSON.stringify(formattedArticles, null, 2)}
 
 For each article, your panel of four distinct virtual experts must provide individual analyses:
-1. "Sarah" - Daytrader (Technical & Momentum): Focuses on short-term price action, volume, technical levels, support/resistance, momentum, and immediate reaction to news headlines.
-2. "David" - Value Investor (Fundamentals & Moat): Focuses on long-term fundamentals, company valuation, earnings power, debt, cash flows, and whether this news affects the company's long-term competitive moat or structural advantages.
-3. "Elena" - Macro Strategist (Geopolitics & Policy): Focuses on high-level market trends, interest rates, inflation, geopolitics, central bank policies, sector rotation, and macroeconomic liquidity.
-4. "Jack" - Sentiment Analyst (Retail & Options): Focuses on retail trader psychology, social media hype, options flows, crowd behavior, and market fear/greed indicators.
+1. "Momentum Maverick" - Daytrader (Technical & Momentum): Focuses on short-term price action, volume, technical levels, support/resistance, momentum, and immediate reaction to news headlines.
+2. "Value Anchor" - Value Investor (Fundamentals & Moat): Focuses on long-term fundamentals, company valuation, earnings power, debt, cash flows, and whether this news affects the company's long-term competitive moat or structural advantages.
+3. "Macro Oracle" - Macro Strategist (Geopolitics & Policy): Focuses on high-level market trends, interest rates, inflation, geopolitics, central bank policies, sector rotation, and macroeconomic liquidity.
+4. "Crowd Whisperer" - Sentiment Analyst (Retail & Options): Focuses on retail trader psychology, social media hype, options flows, crowd behavior, and market fear/greed indicators.
 
 For each agent on each article, provide:
 - stance: 'up' | 'down' | 'unchanged' (predicting the directional effect of this news on the target asset)
@@ -79,28 +79,28 @@ Your response must be a JSON object matching this structure:
       "reasoning": "string",
       "agentAnalyses": [
         {
-          "agentName": "Sarah",
+          "agentName": "Momentum Maverick",
           "agentRole": "Daytrader (Technical & Momentum)",
           "stance": "up" | "down" | "unchanged",
           "confidence": number,
           "commentary": "string"
         },
         {
-          "agentName": "David",
+          "agentName": "Value Anchor",
           "agentRole": "Value Investor (Fundamentals & Moat)",
           "stance": "up" | "down" | "unchanged",
           "confidence": number,
           "commentary": "string"
         },
         {
-          "agentName": "Elena",
+          "agentName": "Macro Oracle",
           "agentRole": "Macro Strategist (Geopolitics & Policy)",
           "stance": "up" | "down" | "unchanged",
           "confidence": number,
           "commentary": "string"
         },
         {
-          "agentName": "Jack",
+          "agentName": "Crowd Whisperer",
           "agentRole": "Sentiment Analyst (Retail & Options)",
           "stance": "up" | "down" | "unchanged",
           "confidence": number,

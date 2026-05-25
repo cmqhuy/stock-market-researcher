@@ -1088,10 +1088,10 @@ h2.panel-title {
 }
 
 /* Avatar backgrounds */
-.avatar-s { background: #ec4899; } /* Sarah - Pink */
-.avatar-d { background: #3b82f6; } /* David - Blue */
-.avatar-e { background: #10b981; } /* Elena - Emerald */
-.avatar-j { background: #8b5cf6; } /* Jack - Purple */
+.avatar-m { background: #ec4899; } /* Momentum Maverick - Pink */
+.avatar-v { background: #3b82f6; } /* Value Anchor - Blue */
+.avatar-o { background: #10b981; } /* Macro Oracle - Emerald */
+.avatar-c { background: #8b5cf6; } /* Crowd Whisperer - Purple */
 
 /* Custom grid for single stock view predictions */
 .stock-detail-view {

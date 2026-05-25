@@ -136,10 +136,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </div>
             The terminal hosts a panel of four specialized market experts:
             <ul style={{ paddingLeft: '1rem', marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <li><strong>Sarah (Daytrader)</strong>: technical momentum and short-term volatility.</li>
-              <li><strong>David (Value)</strong>: core valuations, cash flows, and moat sustainability.</li>
-              <li><strong>Elena (Macro)</strong>: inflation, yield curves, and geopolitics.</li>
-              <li><strong>Jack (Sentiment)</strong>: option sweeps and retail community chatter.</li>
+              <li><strong>Momentum Maverick (Daytrader)</strong>: technical momentum and short-term volatility.</li>
+              <li><strong>Value Anchor (Value)</strong>: core valuations, cash flows, and moat sustainability.</li>
+              <li><strong>Macro Oracle (Macro)</strong>: inflation, yield curves, and geopolitics.</li>
+              <li><strong>Crowd Whisperer (Sentiment)</strong>: option sweeps and retail community chatter.</li>
             </ul>
             In Live Mode, Gemini evaluates real headlines and synthesizes a 14-day directional forecast.
           </div>

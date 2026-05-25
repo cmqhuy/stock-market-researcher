@@ -86,10 +86,10 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
 
   const getAgentAvatarClass = (name: string): string => {
     switch (name.charAt(0)) {
-      case 'S': return 'avatar-s';
-      case 'D': return 'avatar-d';
-      case 'E': return 'avatar-e';
-      case 'J': return 'avatar-j';
+      case 'M': return 'avatar-m';
+      case 'V': return 'avatar-v';
+      case 'O': return 'avatar-o';
+      case 'C': return 'avatar-c';
       default: return '';
     }
   };

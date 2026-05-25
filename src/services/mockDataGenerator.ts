@@ -87,28 +87,28 @@ export const generateMockMarketAnalysis = (): MarketState => {
       reasoning: 'Higher interest rates increase borrowing costs and compress valuation multiples, presenting a headwind for equities, especially high-growth segments.',
       agentAnalyses: [
         {
-          agentName: 'Sarah',
+          agentName: 'Momentum Maverick',
           agentRole: 'Daytrader (Technical & Momentum)',
           stance: 'down',
           confidence: 80,
           commentary: 'This is a clear short-term bearish trigger. Watch SPY support at the 50-day moving average. If that level breaks, we could see a rapid 2-3% drop. Momentum is shifting to the downside.'
         },
         {
-          agentName: 'David',
+          agentName: 'Value Anchor',
           agentRole: 'Value Investor (Fundamentals & Moat)',
           stance: 'down',
           confidence: 60,
           commentary: 'Higher discount rates lower the present value of future cash flows, making highly-valued growth stocks look overpriced. I will be looking to buy compounders at cheaper valuations.'
         },
         {
-          agentName: 'Elena',
+          agentName: 'Macro Oracle',
           agentRole: 'Macro Strategist (Geopolitics & Policy)',
           stance: 'down',
           confidence: 90,
           commentary: 'The Fed is trapped by stubborn services inflation and a tight labor market. The policy rate is restrictive, and this delays the liquidity injection markets were pricing in. Neutral to bearish stance is warranted.'
         },
         {
-          agentName: 'Jack',
+          agentName: 'Crowd Whisperer',
           agentRole: 'Sentiment Analyst (Retail & Options)',
           stance: 'unchanged',
           confidence: 70,
@@ -123,28 +123,28 @@ export const generateMockMarketAnalysis = (): MarketState => {
       reasoning: 'Unprecedented institutional capital expenditure into Artificial Intelligence infrastructure provides strong fundamental backing for the market leaders, driving the entire index higher.',
       agentAnalyses: [
         {
-          agentName: 'Sarah',
+          agentName: 'Momentum Maverick',
           agentRole: 'Daytrader (Technical & Momentum)',
           stance: 'up',
           confidence: 90,
           commentary: 'Excellent price action. Leaders like NVDA and MSFT are breaking out on high volume. This is a classic trend-following long setup. Ride the momentum, set tight stop losses.'
         },
         {
-          agentName: 'David',
+          agentName: 'Value Anchor',
           agentRole: 'Value Investor (Fundamentals & Moat)',
           stance: 'up',
           confidence: 70,
           commentary: 'AI capital expenditure is real. Unlike the dot-com bubble, these tech giants are printing massive free cash flows. Their moats are expanding, justifying higher valuations.'
         },
         {
-          agentName: 'Elena',
+          agentName: 'Macro Oracle',
           agentRole: 'Macro Strategist (Geopolitics & Policy)',
           stance: 'unchanged',
           confidence: 65,
           commentary: 'AI is a long-term productivity driver, which can act as a deflationary force eventually. However, in the near term, massive tech capital expenditure does not offset general macro tightening.'
         },
         {
-          agentName: 'Jack',
+          agentName: 'Crowd Whisperer',
           agentRole: 'Sentiment Analyst (Retail & Options)',
           stance: 'up',
           confidence: 85,
@@ -159,28 +159,28 @@ export const generateMockMarketAnalysis = (): MarketState => {
       reasoning: 'Rising bond yields compete directly with stocks for investor capital, making risk-free government debt increasingly attractive compared to equity yields.',
       agentAnalyses: [
         {
-          agentName: 'Sarah',
+          agentName: 'Momentum Maverick',
           agentRole: 'Daytrader (Technical & Momentum)',
           stance: 'down',
           confidence: 75,
           commentary: '10-year yield breaking 4.5% is historically a major trigger for algorithmic selling program execution. Growth sectors will feel the heat. Scalping index puts.'
         },
         {
-          agentName: 'David',
+          agentName: 'Value Anchor',
           agentRole: 'Value Investor (Fundamentals & Moat)',
           stance: 'down',
           confidence: 80,
           commentary: 'When risk-free yields reach 4.6%, the equity risk premium shrinks. If you can get 4.6% guaranteed from the US government, buying stocks at 25x earnings makes little sense. Wait for lower entries.'
         },
         {
-          agentName: 'Elena',
+          agentName: 'Macro Oracle',
           agentRole: 'Macro Strategist (Geopolitics & Policy)',
           stance: 'down',
           confidence: 85,
           commentary: 'Sticky retail sales indicate the consumer is still spending, which prevents yields from falling. The bond market is pricing out rate cuts. This structural shift is bearish for debt-heavy companies.'
         },
         {
-          agentName: 'Jack',
+          agentName: 'Crowd Whisperer',
           agentRole: 'Sentiment Analyst (Retail & Options)',
           stance: 'unchanged',
           confidence: 60,
@@ -195,28 +195,28 @@ export const generateMockMarketAnalysis = (): MarketState => {
       reasoning: 'Higher oil prices benefit energy stock components but act as a tax on consumers and increase freight/input costs for the rest of the economy, creating a net neutral market effect.',
       agentAnalyses: [
         {
-          agentName: 'Sarah',
+          agentName: 'Momentum Maverick',
           agentRole: 'Daytrader (Technical & Momentum)',
           stance: 'up',
           confidence: 70,
           commentary: 'Momentum is strong in XLE and energy names. I am long oil futures and oil majors. Shorting transportation names. Sector rotation is in play.'
         },
         {
-          agentName: 'David',
+          agentName: 'Value Anchor',
           agentRole: 'Value Investor (Fundamentals & Moat)',
           stance: 'unchanged',
           confidence: 65,
           commentary: 'Commodity prices are cyclical. Excellent for cash-rich oil producers right now, but it squeezes margins for consumer staples and industrials. A net wash for diversified portfolios.'
         },
         {
-          agentName: 'Elena',
+          agentName: 'Macro Oracle',
           agentRole: 'Macro Strategist (Geopolitics & Policy)',
           stance: 'down',
           confidence: 80,
           commentary: 'Oil at these levels represents a major geopolitical risk and feeds straight into headline CPI. This will make the Fed\'s job harder and increases the probability of stagflationary pressures.'
         },
         {
-          agentName: 'Jack',
+          agentName: 'Crowd Whisperer',
           agentRole: 'Sentiment Analyst (Retail & Options)',
           stance: 'unchanged',
           confidence: 50,
@@ -231,28 +231,28 @@ export const generateMockMarketAnalysis = (): MarketState => {
       reasoning: 'Strong capital inflows and positive sentiment can drive prices up in the near term, though extreme optimism signals potential medium-term contrarian risks.',
       agentAnalyses: [
         {
-          agentName: 'Sarah',
+          agentName: 'Momentum Maverick',
           agentRole: 'Daytrader (Technical & Momentum)',
           stance: 'up',
           confidence: 80,
           commentary: 'Never fight the trend. High inflows mean dip-buyers are active. The index is in a clear upward channel. Stay long until the market breaks structure.'
         },
         {
-          agentName: 'David',
+          agentName: 'Value Anchor',
           agentRole: 'Value Investor (Fundamentals & Moat)',
           stance: 'unchanged',
           confidence: 75,
           commentary: 'Extreme greed in sentiment gauges suggests that margins of safety are narrow. I am not selling our quality names, but I am certainly not putting new cash to work here.'
         },
         {
-          agentName: 'Elena',
+          agentName: 'Macro Oracle',
           agentRole: 'Macro Strategist (Geopolitics & Policy)',
           stance: 'unchanged',
           confidence: 60,
           commentary: 'Liquidity flows are keeping the market afloat. Passive ETF inflows act as a floor. However, structural economic data does not support this level of exuberance indefinitely.'
         },
         {
-          agentName: 'Jack',
+          agentName: 'Crowd Whisperer',
           agentRole: 'Sentiment Analyst (Retail & Options)',
           stance: 'up',
           confidence: 90,
@@ -473,7 +473,7 @@ export const generateMockStockAnalysis = (ticker: string): StockAnalysis => {
 
     const agentAnalyses: AgentAnalysis[] = [
       {
-        agentName: 'Sarah',
+        agentName: 'Momentum Maverick',
         agentRole: 'Daytrader (Technical & Momentum)',
         stance: sarahStance,
         confidence: confBase + 5,
@@ -484,7 +484,7 @@ export const generateMockStockAnalysis = (ticker: string): StockAnalysis => {
             : `Muted price action. The stock is stuck in a tight consolidation range. No trade zone for me.`
       },
       {
-        agentName: 'David',
+        agentName: 'Value Anchor',
         agentRole: 'Value Investor (Fundamentals & Moat)',
         stance: davidStance,
         confidence: confBase - 5,
@@ -495,7 +495,7 @@ export const generateMockStockAnalysis = (ticker: string): StockAnalysis => {
             : `No material impact on the company's long-term earnings capability. Noise in the markets; I remain focused on long-term compounders.`
       },
       {
-        agentName: 'Elena',
+        agentName: 'Macro Oracle',
         agentRole: 'Macro Strategist (Geopolitics & Policy)',
         stance: elenaStance,
         confidence: confBase,
@@ -506,7 +506,7 @@ export const generateMockStockAnalysis = (ticker: string): StockAnalysis => {
             : `Macro conditions remain the primary driver for this stock. Sector rotation is offsetting company-specific updates.`
       },
       {
-        agentName: 'Jack',
+        agentName: 'Crowd Whisperer',
         agentRole: 'Sentiment Analyst (Retail & Options)',
         stance: jackStance,
         confidence: confBase + 8,
