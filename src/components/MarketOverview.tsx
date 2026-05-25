@@ -44,13 +44,19 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
   };
 
   const getAgentAvatarClass = (name: string): string => {
-    switch (name.charAt(0)) {
-      case 'M': return 'avatar-m';
-      case 'V': return 'avatar-v';
-      case 'O': return 'avatar-o';
-      case 'C': return 'avatar-c';
-      default: return '';
-    }
+    if (name.includes('Momentum') || name.includes('Maverick')) return 'avatar-m';
+    if (name.includes('Value') || name.includes('Anchor')) return 'avatar-v';
+    if (name.includes('Macro') || name.includes('Oracle')) return 'avatar-o';
+    if (name.includes('Crowd') || name.includes('Whisperer')) return 'avatar-c';
+    return '';
+  };
+
+  const getAgentInitials = (name: string): string => {
+    if (name.includes('Momentum') || name.includes('Maverick')) return 'MM';
+    if (name.includes('Value') || name.includes('Anchor')) return 'VA';
+    if (name.includes('Macro') || name.includes('Oracle')) return 'MO';
+    if (name.includes('Crowd') || name.includes('Whisperer')) return 'CW';
+    return name.charAt(0);
   };
 
   return (
@@ -172,7 +178,7 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
                                   className={`agent-mini-dot ${getAgentAvatarClass(agent.agentName)}`}
                                   title={`${agent.agentName}: ${agent.stance.toUpperCase()} (${agent.confidence}%)`}
                                 >
-                                  {agent.agentName.charAt(0)}
+                                  {getAgentInitials(agent.agentName)}
                                 </div>
                               ))}
                             </div>
@@ -227,7 +233,7 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
                                 <div className="expert-card-header">
                                   <div className="expert-profile">
                                     <div className={`expert-avatar ${getAgentAvatarClass(agent.agentName)}`}>
-                                      {agent.agentName.charAt(0)}
+                                      {getAgentInitials(agent.agentName)}
                                     </div>
                                     <div className="expert-profile-text">
                                       <span className="expert-name">{agent.agentName}</span>
