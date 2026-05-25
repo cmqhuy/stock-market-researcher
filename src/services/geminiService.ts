@@ -7,14 +7,16 @@ import type { NewsArticle, ArticleAnalysis, Prediction14Day } from '../types';
 function getGeminiModel(apiKey: string, enableSearch = false) {
   const genAI = new GoogleGenerativeAI(apiKey);
   const config: any = {
-    model: 'gemini-2.5-flash', // We use gemini-2.5-flash as it is fast, cheap, and supports structured JSON outputs
-    generationConfig: {
-      responseMimeType: 'application/json',
-    },
+    model: 'gemini-2.5-flash',
+    generationConfig: {}
   };
   
   if (enableSearch) {
     config.tools = [{ googleSearch: {} }];
+    // Note: tool use with responseMimeType 'application/json' is unsupported,
+    // so we rely on prompt instructions and manually parse the markdown JSON blocks.
+  } else {
+    config.generationConfig.responseMimeType = 'application/json';
   }
 
   return genAI.getGenerativeModel(config);
