@@ -169,7 +169,8 @@ export function App() {
         error,
         'Failed to execute Live Market Analysis. The app has fallen back to simulated data. Please verify your API key and connection.'
       );
-      setMarketState(generateMockMarketAnalysis());
+      // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
+      setMarketState({ ...generateMockMarketAnalysis(), timestamp: 0 });
     } finally {
       setIsLoadingMarket(false);
     }
@@ -253,7 +254,8 @@ export function App() {
         `Failed to analyze ${cleanTicker} in Live Mode. The app has fallen back to simulated data. Please verify your API key and connection.`
       );
       
-      const mockAnalysis = generateMockStockAnalysis(cleanTicker);
+      // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
+      const mockAnalysis = { ...generateMockStockAnalysis(cleanTicker), timestamp: 0 };
       setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: mockAnalysis }));
       setWatchlist((prevWatchlist) =>
         prevWatchlist.map((stock) =>
@@ -285,7 +287,8 @@ export function App() {
   useEffect(() => {
     const now = Date.now();
     const isExpired = !marketState.timestamp || (now - marketState.timestamp > 15 * 60 * 1000);
-    const isSimulated = !marketState.timestamp;
+    // Use the actual isSimulated flag — not the absence of timestamp (which was always false after we added timestamps to mocks)
+    const isSimulated = marketState.isSimulated === true;
     const needsRefetch = isExpired || (settings.mode === 'live' && isSimulated);
 
     if (needsRefetch) {
@@ -328,7 +331,8 @@ export function App() {
       const existing = stockAnalyses[selectedTicker];
       const now = Date.now();
       const isExpired = !existing || !existing.timestamp || (now - existing.timestamp > 15 * 60 * 1000);
-      const isSimulated = existing && !existing.timestamp;
+      // Use the actual isSimulated flag — not the absence of timestamp
+      const isSimulated = existing?.isSimulated === true;
       const needsRefetch = isExpired || (settings.mode === 'live' && isSimulated);
 
       if (needsRefetch) {
