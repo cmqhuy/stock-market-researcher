@@ -95,9 +95,10 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
         <button
           className="btn-primary"
           onClick={onRefreshMarket}
-          style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', gap: '0.35rem' }}
+          disabled={isLoading}
+          style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', gap: '0.35rem', opacity: isLoading ? 0.6 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}
         >
-          <RefreshCw size={14} />
+          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
           Refresh Analysis
         </button>
       </div>
