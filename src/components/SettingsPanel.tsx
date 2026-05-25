@@ -134,7 +134,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <HelpCircle size={14} style={{ color: 'var(--primary)' }} />
               How the Expert Panel Works
             </div>
-            The terminal hosts four virtual agent sub-agents:
+            The terminal hosts a panel of four specialized market experts:
             <ul style={{ paddingLeft: '1rem', marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
               <li><strong>Sarah (Daytrader)</strong>: technical momentum and short-term volatility.</li>
               <li><strong>David (Value)</strong>: core valuations, cash flows, and moat sustainability.</li>

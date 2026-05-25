@@ -38,7 +38,7 @@ export async function analyzeNewsAndPredict(
     summary: art.summary || 'N/A'
   }));
 
-  const prompt = `You are a panel of elite stock market research sub-agents collaborating on asset analysis. 
+  const prompt = `You are a panel of elite stock market analysts collaborating on asset analysis. 
 Analyze the following news articles regarding the target asset.
 
 Target Asset: ${targetLabel}

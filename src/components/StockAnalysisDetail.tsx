@@ -19,7 +19,7 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
     return (
       <div className="glass-panel analysis-running-overlay" style={{ minHeight: '450px' }}>
         <div className="loading-spinner"></div>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>Executing Sub-Agent Consensus</h3>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>Convening Analyst Roundtable</h3>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', maxWidth: '300px' }}>
           Sarah, David, Elena, and Jack are debating the latest stock news and synthesizing the 14-day projection...
         </p>
@@ -139,7 +139,7 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
         <div className="news-header-section">
           <h2 className="panel-title" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 0 }}>
             <MessageSquare size={18} className="text-primary" style={{ color: 'var(--primary)' }} />
-            Asset Headlines & Sub-Agent Roundtables
+            Asset Headlines & Roundtable Debates
           </h2>
           <span className="news-count-badge">{news.length} News Articles</span>
         </div>
