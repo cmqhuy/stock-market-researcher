@@ -55,66 +55,89 @@ export function useStockAnalysis(
 
     setIsLoadingStock(true);
     try {
-      // ALWAYS fetch real stock news and latest price/change in parallel
-      const [articles, quote] = await Promise.all([
-        newsService.fetchLatestNews(cleanTicker),
-        stockService.fetchQuote(cleanTicker).catch(() => null)
-      ]);
-      const activeArticles = articles.slice(0, 10);
-      const nameToUse = quote?.name || name;
+      if (currentSettings.mode === 'live') {
+        // ALWAYS fetch real stock news and latest price/change in parallel
+        const [articles, quote] = await Promise.all([
+          newsService.fetchLatestNews(cleanTicker),
+          stockService.fetchQuote(cleanTicker).catch(() => null)
+        ]);
+        const activeArticles = articles.slice(0, 10);
+        const nameToUse = quote?.name || name;
 
-      if (currentSettings.mode === 'live' && currentSettings.apiKey) {
-        // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
-        const { newsAnalyses, prediction, groundingArticles } = await aiService.analyzeNewsAndPredict(
-          currentSettings.apiKey,
-          activeArticles,
-          { ticker: cleanTicker, name: nameToUse }
-        );
-
-        // De-duplicate and merge grounding articles from Gemini search
-        const combinedArticles = [...activeArticles];
-        (groundingArticles || []).forEach(ga => {
-          const isDup = activeArticles.some(
-            aa => (aa.url && aa.url === ga.url) || 
-                  aa.title.toLowerCase().replace(/[^a-z0-9]/g, '') === ga.title.toLowerCase().replace(/[^a-z0-9]/g, '')
+        if (currentSettings.apiKey) {
+          // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
+          const { newsAnalyses, prediction, groundingArticles } = await aiService.analyzeNewsAndPredict(
+            currentSettings.apiKey,
+            activeArticles,
+            { ticker: cleanTicker, name: nameToUse }
           );
-          if (!isDup) combinedArticles.push(ga);
-        });
 
-        const finalAnalysis: StockAnalysis = {
-          ticker: cleanTicker,
-          name: nameToUse,
-          prediction,
-          news: combinedArticles,
-          newsAnalyses,
-          lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
-          timestamp: Date.now(),
-          isSimulated: false
-        };
+          // De-duplicate and merge grounding articles from Gemini search
+          const combinedArticles = [...activeArticles];
+          (groundingArticles || []).forEach(ga => {
+            const isDup = activeArticles.some(
+              aa => (aa.url && aa.url === ga.url) || 
+                    aa.title.toLowerCase().replace(/[^a-z0-9]/g, '') === ga.title.toLowerCase().replace(/[^a-z0-9]/g, '')
+            );
+            if (!isDup) combinedArticles.push(ga);
+          });
 
-        // Cache the analysis
-        setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: finalAnalysis }));
+          const finalAnalysis: StockAnalysis = {
+            ticker: cleanTicker,
+            name: nameToUse,
+            prediction,
+            news: combinedArticles,
+            newsAnalyses,
+            lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
+            timestamp: Date.now(),
+            isSimulated: false
+          };
 
-        // Update predictions, confidence scores, and current price/change in the watchlist
-        setWatchlist((prevWatchlist) =>
-          prevWatchlist.map((stock) =>
-            stock.ticker === cleanTicker
-              ? {
-                  ...stock,
-                  name: nameToUse,
-                  price: quote?.price || stock.price,
-                  change: quote?.change || stock.change,
-                  history: quote?.history && quote.history.length > 0 ? quote.history : stock.history,
-                  historyTimestamps: quote?.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps,
-                  prediction: prediction.stance,
-                  confidence: prediction.confidence,
-                }
-              : stock
-          )
-        );
+          // Cache the analysis
+          setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: finalAnalysis }));
+
+          // Update predictions, confidence scores, and current price/change in the watchlist
+          setWatchlist((prevWatchlist) =>
+            prevWatchlist.map((stock) =>
+              stock.ticker === cleanTicker
+                ? {
+                    ...stock,
+                    name: nameToUse,
+                    price: quote?.price || stock.price,
+                    change: quote?.change || stock.change,
+                    history: quote?.history && quote.history.length > 0 ? quote.history : stock.history,
+                    historyTimestamps: quote?.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps,
+                    prediction: prediction.stance,
+                    confidence: prediction.confidence,
+                  }
+                : stock
+            )
+          );
+        } else {
+          // Live fallback with mock analysis on real articles
+          const mockAnalysis = generateMockStockAnalysis(cleanTicker, activeArticles);
+          setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: mockAnalysis }));
+
+          setWatchlist((prevWatchlist) =>
+            prevWatchlist.map((stock) =>
+              stock.ticker === cleanTicker
+                ? {
+                    ...stock,
+                    name: nameToUse,
+                    price: quote?.price || stock.price,
+                    change: quote?.change || stock.change,
+                    history: quote?.history && quote.history.length > 0 ? quote.history : stock.history,
+                    historyTimestamps: quote?.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps,
+                    prediction: mockAnalysis.prediction.stance,
+                    confidence: mockAnalysis.prediction.confidence,
+                  }
+                : stock
+            )
+          );
+        }
       } else {
-        // Demo mode fallback — generate mock analyses but on REAL live articles and update real price/change!
-        const mockAnalysis = generateMockStockAnalysis(cleanTicker, activeArticles);
+        // Instant Demo Mode: generate local mock analysis instantly without network calls
+        const mockAnalysis = generateMockStockAnalysis(cleanTicker);
         setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: mockAnalysis }));
 
         setWatchlist((prevWatchlist) =>
@@ -122,11 +145,9 @@ export function useStockAnalysis(
             stock.ticker === cleanTicker
               ? {
                   ...stock,
-                  name: nameToUse,
-                  price: quote?.price || stock.price,
-                  change: quote?.change || stock.change,
-                  history: quote?.history && quote.history.length > 0 ? quote.history : stock.history,
-                  historyTimestamps: quote?.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps,
+                  name: name,
+                  price: stock.price || mockAnalysis.prediction.confidence * 2,
+                  change: stock.change || mockAnalysis.prediction.confidence / 10 - 5,
                   prediction: mockAnalysis.prediction.stance,
                   confidence: mockAnalysis.prediction.confidence,
                 }

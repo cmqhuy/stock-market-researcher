@@ -39,38 +39,44 @@ export function useMarketAnalysis(
   const runMarketAnalysis = useCallback(async (currentSettings: AppSettings) => {
     setIsLoadingMarket(true);
     try {
-      // ALWAYS fetch real market news headlines first
-      const articles = await newsService.fetchLatestNews();
-      const activeArticles = articles.slice(0, 10);
+      if (currentSettings.mode === 'live') {
+        // ALWAYS fetch real market news headlines first
+        const articles = await newsService.fetchLatestNews();
+        const activeArticles = articles.slice(0, 10);
 
-      if (currentSettings.mode === 'live' && currentSettings.apiKey) {
-        // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
-        const { newsAnalyses, prediction, groundingArticles } = await aiService.analyzeNewsAndPredict(
-          currentSettings.apiKey,
-          activeArticles
-        );
-
-        // De-duplicate and merge grounding articles from Gemini search
-        const combinedArticles = [...activeArticles];
-        (groundingArticles || []).forEach(ga => {
-          const isDup = activeArticles.some(
-            aa => (aa.url && aa.url === ga.url) || 
-                  aa.title.toLowerCase().replace(/[^a-z0-9]/g, '') === ga.title.toLowerCase().replace(/[^a-z0-9]/g, '')
+        if (currentSettings.apiKey) {
+          // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
+          const { newsAnalyses, prediction, groundingArticles } = await aiService.analyzeNewsAndPredict(
+            currentSettings.apiKey,
+            activeArticles
           );
-          if (!isDup) combinedArticles.push(ga);
-        });
 
-        setMarketState({
-          prediction,
-          news: combinedArticles,
-          newsAnalyses,
-          lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
-          timestamp: Date.now(),
-          isSimulated: false
-        });
+          // De-duplicate and merge grounding articles from Gemini search
+          const combinedArticles = [...activeArticles];
+          (groundingArticles || []).forEach(ga => {
+            const isDup = activeArticles.some(
+              aa => (aa.url && aa.url === ga.url) || 
+                    aa.title.toLowerCase().replace(/[^a-z0-9]/g, '') === ga.title.toLowerCase().replace(/[^a-z0-9]/g, '')
+            );
+            if (!isDup) combinedArticles.push(ga);
+          });
+
+          setMarketState({
+            prediction,
+            news: combinedArticles,
+            newsAnalyses,
+            lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
+            timestamp: Date.now(),
+            isSimulated: false
+          });
+        } else {
+          // Demo mode fallback — generate mock analyses but on REAL live articles!
+          const mockMarket = generateMockMarketAnalysis(activeArticles);
+          setMarketState(mockMarket);
+        }
       } else {
-        // Demo mode fallback — generate mock analyses but on REAL live articles!
-        const mockMarket = generateMockMarketAnalysis(activeArticles);
+        // Instant Demo Mode: generate local mock analysis instantly without network calls
+        const mockMarket = generateMockMarketAnalysis();
         setMarketState(mockMarket);
       }
     } catch (error) {

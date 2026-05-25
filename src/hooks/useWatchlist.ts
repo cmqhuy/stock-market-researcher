@@ -30,41 +30,63 @@ export function useWatchlist(mode: 'live' | 'demo') {
   const refreshQuotes = useCallback(async () => {
     if (watchlist.length === 0) return;
     try {
-      const updatedWatchlist = await Promise.all(
-        watchlist.map(async (stock) => {
-          try {
-            const quote = await stockService.fetchQuote(stock.ticker);
-            return {
-              ...stock,
-              name: quote.name,
-              price: quote.price,
-              change: quote.change,
-              history: quote.history && quote.history.length > 0 ? quote.history : stock.history,
-              historyTimestamps: quote.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps
-            };
-          } catch (err) {
-            console.warn(`Failed to refresh quote for ${stock.ticker}:`, err);
-            return stock;
-          }
-        })
-      );
+      if (mode === 'live') {
+        const updatedWatchlist = await Promise.all(
+          watchlist.map(async (stock) => {
+            try {
+              const quote = await stockService.fetchQuote(stock.ticker);
+              return {
+                ...stock,
+                name: quote.name,
+                price: quote.price,
+                change: quote.change,
+                history: quote.history && quote.history.length > 0 ? quote.history : stock.history,
+                historyTimestamps: quote.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps
+              };
+            } catch (err) {
+              console.warn(`Failed to refresh quote for ${stock.ticker}:`, err);
+              return stock;
+            }
+          })
+        );
 
-      // Only update state if something changed (prices, changes, history, or timestamps)
-      setWatchlist(prev => {
-        const hasChanged = updatedWatchlist.some((updated, idx) => {
-          const current = prev[idx];
-          return !current || 
-                 current.price !== updated.price || 
-                 current.change !== updated.change ||
-                 JSON.stringify(current.history) !== JSON.stringify(updated.history) ||
-                 JSON.stringify(current.historyTimestamps) !== JSON.stringify(updated.historyTimestamps);
+        // Only update state if something changed (prices, changes, history, or timestamps)
+        setWatchlist(prev => {
+          const hasChanged = updatedWatchlist.some((updated, idx) => {
+            const current = prev[idx];
+            return !current || 
+                   current.price !== updated.price || 
+                   current.change !== updated.change ||
+                   JSON.stringify(current.history) !== JSON.stringify(updated.history) ||
+                   JSON.stringify(current.historyTimestamps) !== JSON.stringify(updated.historyTimestamps);
+          });
+          return hasChanged ? updatedWatchlist : prev;
         });
-        return hasChanged ? updatedWatchlist : prev;
-      });
+      } else {
+        // Demo mode: simulate micro fluctuations locally, instantly, keeping UI interactive
+        const updatedWatchlist = watchlist.map((stock) => {
+          const delta = (Math.random() - 0.5) * 0.4;
+          const newPrice = Math.max(1, stock.price + delta);
+          const newChange = stock.change + (delta / Math.max(1, stock.price)) * 100;
+          return {
+            ...stock,
+            price: Number(newPrice.toFixed(2)),
+            change: Number(newChange.toFixed(2))
+          };
+        });
+
+        setWatchlist(prev => {
+          const hasChanged = updatedWatchlist.some((updated, idx) => {
+            const current = prev[idx];
+            return !current || current.price !== updated.price || current.change !== updated.change;
+          });
+          return hasChanged ? updatedWatchlist : prev;
+        });
+      }
     } catch (err) {
       console.warn('Watchlist quotes refresh failed:', err);
     }
-  }, [watchlist]);
+  }, [watchlist, mode]);
 
   // Initial live quotes refresh on mount
   useEffect(() => {
@@ -100,27 +122,28 @@ export function useWatchlist(mode: 'live' | 'demo') {
       let history: number[] = [];
       let historyTimestamps: number[] = [];
 
-      try {
-        // Always try to fetch live price first
-        const quote = await stockService.fetchQuote(cleanTicker);
-        name = quote.name;
-        price = quote.price;
-        change = quote.change;
-        history = quote.history || [];
-        historyTimestamps = quote.historyTimestamps || [];
-      } catch (err) {
-        // Fall back to mock seed data only if settings.mode is 'demo'
-        if (mode === 'demo') {
-          console.warn(`Falling back to mock ticker data for ${cleanTicker}`);
-          const mockStocks = getMockWatchlist();
-          const existingMock = mockStocks.find(s => s.ticker === cleanTicker);
-          name = existingMock?.name || `${cleanTicker} Corporation`;
-          price = existingMock?.price || 50 + Math.random() * 200;
-          change = existingMock?.change || (Math.random() - 0.5) * 8;
-        } else {
-          // In live mode, propagate the error up so the UI can notify the user
-          throw err;
+      if (mode === 'live') {
+        try {
+          const quote = await stockService.fetchQuote(cleanTicker);
+          name = quote.name;
+          price = quote.price;
+          change = quote.change;
+          history = quote.history || [];
+          historyTimestamps = quote.historyTimestamps || [];
+        } catch (err) {
+          throw err; // In live mode, fail so the error boundary triggers
         }
+      } else {
+        // Demo mode: generate mock ticker values instantly without any network call
+        const mockStocks = getMockWatchlist();
+        const existingMock = mockStocks.find(s => s.ticker === cleanTicker);
+        name = existingMock?.name || `${cleanTicker} Corporation`;
+        price = existingMock?.price || 50 + Math.random() * 200;
+        change = existingMock?.change || (Math.random() - 0.5) * 8;
+        
+        // Generate a random history line for the sparkline chart
+        history = Array.from({ length: 7 }, () => price * (1 + (Math.random() - 0.5) * 0.05));
+        historyTimestamps = Array.from({ length: 7 }, (_, i) => Date.now() - (7 - i) * 24 * 60 * 60 * 1000);
       }
 
       const newStock: WatchlistStock = {
