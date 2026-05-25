@@ -60,7 +60,7 @@ export async function fetchLatestNews(ticker?: string): Promise<NewsArticle[]> {
         source,
         time: formattedDate,
         url: link,
-        summary: summary || 'Select this article to read detailed sub-agent commentary and market impact analysis.'
+        summary: summary || 'Select this article to read detailed expert panel commentary and market impact analysis.'
       });
     });
 

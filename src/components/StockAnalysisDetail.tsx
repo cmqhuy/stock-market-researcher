@@ -8,27 +8,28 @@ interface LoadingMessage {
 }
 
 const LOADING_MESSAGES: LoadingMessage[] = [
-  { title: "Convening Analyst Roundtable", description: "Sarah, David, Elena, and Jack are debating the latest stock news and synthesizing the 14-day projection..." },
-  { title: "Filtering Signal from Noise", description: "Isolating raw headline data and discarding market hype to trace underlying volatility vectors..." },
-  { title: "Analyzing Value Moats", description: "David is evaluating long-term competitive advantages and discounted cash flows..." },
-  { title: "Tracking Option Sweepers", description: "Jack is monitoring institutional option blocks, call-to-put ratios, and order flows..." },
-  { title: "Modeling Macro Trajectories", description: "Elena is cross-referencing Federal Reserve statements, yields, and geopolitical risk factors..." },
-  { title: "Mapping Momentum Indicators", description: "Sarah is plotting moving averages, relative strength index deviations, and key support floors..." },
-  { title: "Synthesizing Consensus Vectors", description: "Reconciling contrasting daytrader momentum with value investor fundamental targets..." },
-  { title: "Polling Sentiment Indexes", description: "Aggregating crowd behavior and sentiment multipliers across major financial channels..." },
-  { title: "Running Regression Parameters", description: "Evaluating correlation weights between historical events and current market dynamics..." },
-  { title: "Assessing Liquidity Flows", description: "Measuring capital allocations, passive fund flows, and sector rotation indices..." },
-  { title: "Debating Valuation Multiples", description: "Comparing price-to-earnings growth (PEG) ratios against historical industry baselines..." },
-  { title: "Measuring Volatility Spikes", description: "Calculating implied volatility deviations to isolate standard market fluctuations..." },
-  { title: "Auditing Balance Sheets", description: "Checking debt-to-equity ratios, net profit margins, and operational cash generation rates..." },
-  { title: "Decoding Policy Signals", description: "Evaluating central bank interest rate decisions and liquidity tightening timetables..." },
-  { title: "Simulating Price Targets", description: "Projecting standard deviation charts and trading channels for the next 14 days..." },
-  { title: "Evaluating Supply Chains", description: "Sifting through international port delays and inventory shipment timelines..." },
-  { title: "Correlating News Catalysts", description: "Determining if recent headlines act as systemic drivers or short-term volatility events..." },
-  { title: "Structuring Decision Trees", description: "Parsing natural language arguments into quantitative directional vectors..." },
-  { title: "Scanning Social Channels", description: "Gauging retail investor psychology and speculative hype trends..." },
-  { title: "Compiling Consensus Reports", description: "Consolidating expert panel stances, confidence ratings, and key market risk warnings..." }
+  { title: "Convening Expert Roundtable", description: "Assembling our panel of specialists to deliberate on recent market catalysts..." },
+  { title: "Filtering Signal from Noise", description: "Isolating high-impact headline data and discarding speculative market chatter..." },
+  { title: "Analyzing Value Moats", description: "The Value Anchor is evaluating capital allocations, cash flows, and moat sustainability..." },
+  { title: "Tracking Option Sweepers", description: "The Crowd Whisperer is analyzing institutional option blocks and speculative retail sentiment..." },
+  { title: "Modeling Macro Trajectories", description: "The Macro Oracle is cross-referencing Federal Reserve policy, yield curves, and geopolitical indicators..." },
+  { title: "Mapping Momentum Indicators", description: "The Momentum Maverick is plotting moving averages, RSI deviations, and key support levels..." },
+  { title: "Synthesizing Consensus Vectors", description: "Reconciling Momentum Maverick's technical setups with Value Anchor's fundamental valuation levels..." },
+  { title: "Polling Market Sentiment", description: "Aggregating the Crowd Whisperer's social feeds and fear-and-greed index multipliers..." },
+  { title: "Running Regression Models", description: "The Macro Oracle is evaluating historical correlations to current macroeconomic data..." },
+  { title: "Assessing Liquidity Channels", description: "Measuring passive ETF inflows and tracing corporate stock buyback patterns..." },
+  { title: "Debating Valuation Multiples", description: "Comparing PEG ratios and enterprise multipliers against historical industry baselines..." },
+  { title: "Calculating Volatility Curves", description: "Evaluating option implied volatility (IV) levels to price in potential gap risk..." },
+  { title: "Auditing Financial Statements", description: "Checking net margins, free cash flow generation rates, and debt-to-equity ratios..." },
+  { title: "Decoding Fed Policy Signals", description: "Parsing FOMC minutes and Federal Reserve governor speeches for rate cut clues..." },
+  { title: "Simulating Price Targets", description: "Projecting 14-day standard deviation channels and potential price breakout zones..." },
+  { title: "Evaluating Logistics Bottlenecks", description: "Sifting through shipping indices and global supply chain transit times..." },
+  { title: "Correlating News Catalysts", description: "Determining whether news updates represent structural shifts or temporary volatility spikes..." },
+  { title: "Structuring Sentiment Graphs", description: "Parsing NLP news arguments into structured bullish and bearish stance vectors..." },
+  { title: "Scanning Option Sentiment", description: "Gauging retail order flows, call/put ratios, and wall-of-worry parameters..." },
+  { title: "Formatting Consensus Reports", description: "Consolidating the roundtable's final ratings, confidence scores, and key risk alerts..." }
 ];
+
 
 interface StockAnalysisDetailProps {
   stockAnalysis: StockAnalysis | null;

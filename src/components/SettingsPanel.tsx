@@ -36,7 +36,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </h2>
 
         <p className="settings-description">
-          Configure the engine execution mode. Live Mode performs actual sentiment analysis via Gemini 1.5 using real RSS feeds.
+          Configure the engine execution mode. Live Mode performs actual sentiment analysis via Gemini 2.5 using real RSS feeds.
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
