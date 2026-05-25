@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Activity, AlertTriangle } from 'lucide-react';
+import { Activity, AlertTriangle, Clock } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { SettingsPanel } from './components/SettingsPanel';
 import { WatchlistPanel } from './components/WatchlistPanel';
@@ -9,6 +9,15 @@ import type { AppSettings, WatchlistStock, MarketState, StockAnalysis } from './
 import { getMockWatchlist, generateMockMarketAnalysis, generateMockStockAnalysis, MOCK_TICKERS } from './services/mockDataGenerator';
 import { fetchLatestNews, fetchLiveStockQuote } from './services/newsService';
 import { analyzeNewsAndPredict } from './services/geminiService';
+
+function parseRateLimitDelay(errorDetails: string): number | undefined {
+  const match = errorDetails.match(/Please retry in ([\d\.]+)s/i) || errorDetails.match(/retry in ([\d\.]+)s/i);
+  if (match && match[1]) {
+    const seconds = parseFloat(match[1]);
+    return Math.ceil(seconds);
+  }
+  return undefined;
+}
 
 export function App() {
   // Load settings from localStorage or defaults
@@ -58,7 +67,50 @@ export function App() {
   const [isLoadingMarket, setIsLoadingMarket] = useState<boolean>(false);
   const [isLoadingStock, setIsLoadingStock] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<{ title: string; message: string; details?: string } | null>(null);
+  const [errorMessage, setErrorMessage] = useState<{
+    title: string;
+    message: string;
+    details?: string;
+    retryAfterSeconds?: number;
+  } | null>(null);
+
+  const triggerErrorModal = useCallback((title: string, error: unknown, defaultMessage: string) => {
+    const errorDetails = error instanceof Error ? error.message : String(error);
+    const isRateLimit = errorDetails.includes('429') || errorDetails.toLowerCase().includes('quota') || errorDetails.toLowerCase().includes('rate limit');
+    
+    let message = defaultMessage;
+    let retryAfterSeconds: number | undefined = undefined;
+    
+    if (isRateLimit) {
+      const parsedDelay = parseRateLimitDelay(errorDetails);
+      retryAfterSeconds = parsedDelay || 30; // default fallback if we couldn't parse
+      
+      message = `Gemini API rate limit exceeded (429). The Google AI Studio free tier limits you to 15 Requests Per Minute and a low request-per-project quota limit (usually 5 RPM). Please wait for the cooldown timer to finish before initiating another market analysis or refreshing.`;
+    }
+    
+    setErrorMessage({
+      title: isRateLimit ? 'API Rate Limit Exceeded' : title,
+      message,
+      details: errorDetails,
+      retryAfterSeconds
+    });
+  }, []);
+
+  // Handle rate limit modal countdown timer
+  useEffect(() => {
+    if (errorMessage && errorMessage.retryAfterSeconds !== undefined && errorMessage.retryAfterSeconds > 0) {
+      const timer = setTimeout(() => {
+        setErrorMessage(prev => {
+          if (!prev || prev.retryAfterSeconds === undefined) return prev;
+          return {
+            ...prev,
+            retryAfterSeconds: Math.max(0, prev.retryAfterSeconds - 1)
+          };
+        });
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorMessage]);
 
   // Sync watchlist to localstorage
   useEffect(() => {
@@ -111,11 +163,11 @@ export function App() {
       }
     } catch (error) {
       console.error('Market analysis failed:', error);
-      setErrorMessage({
-        title: 'Market Analysis Failed',
-        message: 'Failed to execute Live Market Analysis. The app has fallen back to simulated data. Please verify your API key and connection.',
-        details: error instanceof Error ? error.message : String(error)
-      });
+      triggerErrorModal(
+        'Market Analysis Failed',
+        error,
+        'Failed to execute Live Market Analysis. The app has fallen back to simulated data. Please verify your API key and connection.'
+      );
       setMarketState(generateMockMarketAnalysis());
     } finally {
       setIsLoadingMarket(false);
@@ -193,11 +245,11 @@ export function App() {
       }
     } catch (error) {
       console.error(`Stock analysis failed for ${cleanTicker}:`, error);
-      setErrorMessage({
-        title: `Analysis Failed: ${cleanTicker}`,
-        message: `Failed to analyze ${cleanTicker} in Live Mode. The app has fallen back to simulated data. Please verify your API key and connection.`,
-        details: error instanceof Error ? error.message : String(error)
-      });
+      triggerErrorModal(
+        `Analysis Failed: ${cleanTicker}`,
+        error,
+        `Failed to analyze ${cleanTicker} in Live Mode. The app has fallen back to simulated data. Please verify your API key and connection.`
+      );
       
       const mockAnalysis = generateMockStockAnalysis(cleanTicker);
       setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: mockAnalysis }));
@@ -393,11 +445,11 @@ export function App() {
 
       {errorMessage && (
         <div className="modal-overlay" style={{ zIndex: 1100 }}>
-          <div className="glass-panel modal-content" style={{ maxWidth: '420px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+          <div className="glass-panel modal-content" style={{ maxWidth: '420px', border: errorMessage.retryAfterSeconds ? '1px solid rgba(245, 158, 11, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
               <div style={{
-                background: 'rgba(239, 68, 68, 0.15)',
-                color: 'var(--down-color)',
+                background: errorMessage.retryAfterSeconds ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                color: errorMessage.retryAfterSeconds ? '#f59e0b' : 'var(--down-color)',
                 borderRadius: '50%',
                 width: '36px',
                 height: '36px',
@@ -406,7 +458,7 @@ export function App() {
                 justifyContent: 'center',
                 flexShrink: 0
               }}>
-                <AlertTriangle size={20} />
+                {errorMessage.retryAfterSeconds ? <Clock size={20} /> : <AlertTriangle size={20} />}
               </div>
               <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-main)' }}>
                 {errorMessage.title}
@@ -417,6 +469,51 @@ export function App() {
               {errorMessage.message}
             </p>
 
+            {errorMessage.retryAfterSeconds !== undefined && errorMessage.retryAfterSeconds > 0 ? (
+              <div style={{
+                marginTop: '1rem',
+                marginBottom: '1rem',
+                background: 'rgba(245, 158, 11, 0.06)',
+                border: '1px solid rgba(245, 158, 11, 0.2)',
+                borderRadius: '8px',
+                padding: '0.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.25rem',
+                color: 'var(--text-main)'
+              }}>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(245, 158, 11, 0.85)', fontWeight: 600 }}>
+                  API Cooldown Period
+                </span>
+                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#f59e0b', fontFamily: 'monospace' }}>
+                  {errorMessage.retryAfterSeconds}s
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  Please wait before resubmitting.
+                </span>
+              </div>
+            ) : errorMessage.retryAfterSeconds !== undefined && errorMessage.retryAfterSeconds === 0 ? (
+              <div style={{
+                marginTop: '1rem',
+                marginBottom: '1rem',
+                background: 'rgba(16, 185, 129, 0.06)',
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+                borderRadius: '8px',
+                padding: '0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                color: 'var(--up-color)',
+                fontWeight: 600,
+                fontSize: '0.85rem'
+              }}>
+                <span className="status-dot" style={{ backgroundColor: 'var(--up-color)', position: 'static', transform: 'none' }}></span>
+                Cooldown complete. You may retry now!
+              </div>
+            ) : null}
+
             {errorMessage.details && (
               <div style={{
                 background: 'rgba(7, 10, 19, 0.6)',
@@ -425,7 +522,7 @@ export function App() {
                 padding: '0.75rem',
                 fontSize: '0.78rem',
                 fontFamily: 'monospace',
-                color: '#ef4444',
+                color: errorMessage.retryAfterSeconds ? '#f59e0b' : '#ef4444',
                 maxHeight: '120px',
                 overflowY: 'auto',
                 whiteSpace: 'pre-wrap',
@@ -442,16 +539,16 @@ export function App() {
               style={{
                 marginTop: '1.25rem',
                 width: '100%',
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                color: 'var(--down-color)'
+                background: errorMessage.retryAfterSeconds ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                border: errorMessage.retryAfterSeconds ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+                color: errorMessage.retryAfterSeconds ? '#f59e0b' : 'var(--down-color)'
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
-                e.currentTarget.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.15)';
+                e.currentTarget.style.background = errorMessage.retryAfterSeconds ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                e.currentTarget.style.boxShadow = errorMessage.retryAfterSeconds ? '0 0 15px rgba(245, 158, 11, 0.15)' : '0 0 15px rgba(239, 68, 68, 0.15)';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                e.currentTarget.style.background = errorMessage.retryAfterSeconds ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)';
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
