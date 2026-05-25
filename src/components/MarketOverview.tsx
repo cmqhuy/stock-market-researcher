@@ -210,7 +210,7 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
                     </div>
 
                     <div className="news-item-right">
-                      {analysis && (
+                      {analysis ? (
                         <div style={{ marginRight: '0.5rem' }}>
                           {analysis.consensusStance === 'up' ? (
                             <span className="badge-up">
@@ -228,6 +228,12 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
                               Flat ({analysis.consensusConfidence}%)
                             </span>
                           )}
+                        </div>
+                      ) : (
+                        <div style={{ marginRight: '0.5rem' }}>
+                          <span className="badge-unchanged" style={{ background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                            AI Grounding
+                          </span>
                         </div>
                       )}
                       <ChevronDown size={18} className="news-chevron" />
@@ -301,8 +307,29 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
                           </div>
                         </>
                       ) : (
-                        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                          Analysis pending...
+                        <div className="consensus-block" style={{ borderLeft: '2px solid var(--primary)', background: 'rgba(99, 102, 241, 0.02)' }}>
+                          <div className="consensus-icon-area" style={{ color: 'var(--primary)', borderColor: 'var(--primary)', background: 'rgba(99, 102, 241, 0.05)' }}>
+                            <Shield size={18} />
+                          </div>
+                          <div className="consensus-text-area">
+                            <h5 className="consensus-heading" style={{ color: 'var(--primary)' }}>
+                              AI Search Grounding Source
+                            </h5>
+                            <p className="consensus-reasoning" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                              This article was retrieved dynamically by the panel via live search grounding. It was cross-referenced to validate consensus confidence levels and shape the final 14-day projection.
+                            </p>
+                            {article.url && (
+                              <a
+                                href={article.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn-primary"
+                                style={{ display: 'inline-flex', padding: '0.35rem 0.65rem', fontSize: '0.75rem', marginTop: '0.5rem', textDecoration: 'none', width: 'fit-content', gap: '0.25rem' }}
+                              >
+                                View Original Article
+                              </a>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

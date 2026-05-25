@@ -4,14 +4,20 @@ import type { NewsArticle, ArticleAnalysis, Prediction14Day } from '../types';
 /**
  * Helper to initialize the Gemini client.
  */
-function getGeminiModel(apiKey: string) {
+function getGeminiModel(apiKey: string, enableSearch = false) {
   const genAI = new GoogleGenerativeAI(apiKey);
-  return genAI.getGenerativeModel({
+  const config: any = {
     model: 'gemini-2.5-flash', // We use gemini-2.5-flash as it is fast, cheap, and supports structured JSON outputs
     generationConfig: {
       responseMimeType: 'application/json',
     },
-  });
+  };
+  
+  if (enableSearch) {
+    config.tools = [{ googleSearch: {} }];
+  }
+
+  return genAI.getGenerativeModel(config);
 }
 
 /**
@@ -44,7 +50,7 @@ async function generateContentWithRetry(
 
 /**
  * Executes a single API call to Gemini to analyze multiple articles and synthesize the 14-day prediction.
- * This saves API calls to avoid rate limits (429) on the free tier.
+ * Uses Google Search Grounding to pull additional relevant news articles and catalysts.
  */
 export async function analyzeNewsAndPredict(
   apiKey: string,
@@ -53,6 +59,7 @@ export async function analyzeNewsAndPredict(
 ): Promise<{
   newsAnalyses: Record<string, ArticleAnalysis>;
   prediction: Prediction14Day;
+  groundingArticles?: NewsArticle[];
 }> {
   const targetLabel = tickerContext
     ? `${tickerContext.name} (${tickerContext.ticker.toUpperCase()})`
@@ -74,7 +81,10 @@ Target Asset: ${targetLabel}
 News Articles to analyze:
 ${JSON.stringify(formattedArticles, null, 2)}
 
-For each article, your panel of four distinct virtual experts must provide individual analyses:
+ADDITIONAL INSTRUCTIONS:
+Use Google Search to pull additional recent relevant news, press releases, option flows, and macroeconomic catalysts relating to ${targetLabel}. Use these search results to inform the panel's stances and consolidated prediction.
+
+For each of the provided articles, your panel of four distinct virtual experts must provide individual analyses:
 1. "Momentum Maverick" - Daytrader (Technical & Momentum): Focuses on short-term price action, volume, technical levels, support/resistance, momentum, and immediate reaction to news headlines.
 2. "Value Anchor" - Value Investor (Fundamentals & Moat): Focuses on long-term fundamentals, company valuation, earnings power, debt, cash flows, and whether this news affects the company's long-term competitive moat or structural advantages.
 3. "Macro Oracle" - Macro Strategist (Geopolitics & Policy): Focuses on high-level market trends, interest rates, inflation, geopolitics, central bank policies, sector rotation, and macroeconomic liquidity.
@@ -90,7 +100,7 @@ Also provide a consensus summary for each article:
 - consensusConfidence: number between 0 and 100
 - reasoning: a brief explanation of how the consensus was reached or why the panel is split.
 
-Finally, synthesize the collective findings across all these articles to make a unified 14-day movement prediction for the target asset:
+Finally, synthesize the collective findings across both the provided articles and any additional relevant search results you retrieved to make a unified 14-day movement prediction for the target asset:
 - stance: 'up' | 'down' | 'unchanged' (the predicted price movement direction over the next 14 days)
 - confidence: number between 0 and 100 (overall confidence in this forecast)
 - summary: A professional 3-5 sentence synthesis summarizing the panel's outlook, key debates, and the core thesis.
@@ -147,7 +157,7 @@ Your response must be a JSON object matching this structure:
 }`;
 
   try {
-    const model = getGeminiModel(apiKey);
+    const model = getGeminiModel(apiKey, true); // Enable Google Search grounding
     const result = await generateContentWithRetry(model, prompt);
     const textResponse = result.response.text();
 
@@ -173,7 +183,30 @@ Your response must be a JSON object matching this structure:
       parsed.newsAnalyses[key].articleId = key;
     });
 
-    return parsed;
+    // Parse Search Grounding metadata
+    const groundingMetadata = (result.response as any).candidates?.[0]?.groundingMetadata;
+    const groundingChunks = groundingMetadata?.groundingChunks || [];
+    const groundingArticles: NewsArticle[] = [];
+
+    groundingChunks.forEach((chunk: any, idx: number) => {
+      const web = chunk.web;
+      if (web && web.uri && web.title) {
+        const hostname = new URL(web.uri).hostname.replace('www.', '');
+        groundingArticles.push({
+          id: `gemini-grounding-${idx}`,
+          title: web.title,
+          source: hostname,
+          time: 'AI Grounded',
+          url: web.uri,
+          summary: 'This source was retrieved and cross-referenced dynamically by Gemini search grounding.'
+        });
+      }
+    });
+
+    return {
+      ...parsed,
+      groundingArticles
+    };
   } catch (error) {
     console.error(`Gemini consolidated analysis failed for ${targetLabel}:`, error);
     throw error;

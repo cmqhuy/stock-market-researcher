@@ -144,14 +144,24 @@ export function App() {
 
       if (currentSettings.mode === 'live' && currentSettings.apiKey) {
         // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
-        const { newsAnalyses, prediction } = await analyzeNewsAndPredict(
+        const { newsAnalyses, prediction, groundingArticles } = await analyzeNewsAndPredict(
           currentSettings.apiKey,
           activeArticles
         );
 
+        // De-duplicate and merge grounding articles from Gemini search
+        const combinedArticles = [...activeArticles];
+        (groundingArticles || []).forEach(ga => {
+          const isDup = activeArticles.some(
+            aa => (aa.url && aa.url === ga.url) || 
+                  aa.title.toLowerCase().replace(/[^a-z0-9]/g, '') === ga.title.toLowerCase().replace(/[^a-z0-9]/g, '')
+          );
+          if (!isDup) combinedArticles.push(ga);
+        });
+
         setMarketState({
           prediction,
-          news: activeArticles,
+          news: combinedArticles,
           newsAnalyses,
           lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
           timestamp: Date.now(),
@@ -203,17 +213,27 @@ export function App() {
 
       if (currentSettings.mode === 'live' && currentSettings.apiKey) {
         // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
-        const { newsAnalyses, prediction } = await analyzeNewsAndPredict(
+        const { newsAnalyses, prediction, groundingArticles } = await analyzeNewsAndPredict(
           currentSettings.apiKey,
           activeArticles,
           { ticker: cleanTicker, name: nameToUse }
         );
 
+        // De-duplicate and merge grounding articles from Gemini search
+        const combinedArticles = [...activeArticles];
+        (groundingArticles || []).forEach(ga => {
+          const isDup = activeArticles.some(
+            aa => (aa.url && aa.url === ga.url) || 
+                  aa.title.toLowerCase().replace(/[^a-z0-9]/g, '') === ga.title.toLowerCase().replace(/[^a-z0-9]/g, '')
+          );
+          if (!isDup) combinedArticles.push(ga);
+        });
+
         const finalAnalysis: StockAnalysis = {
           ticker: cleanTicker,
           name: nameToUse,
           prediction,
-          news: activeArticles,
+          news: combinedArticles,
           newsAnalyses,
           lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
           timestamp: Date.now(),
