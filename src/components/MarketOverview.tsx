@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Shield, ChevronDown, Award, Lightbulb, AlertTriangle, MessageSquare, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Shield, ChevronDown, Award, Lightbulb, AlertTriangle, MessageSquare, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
 import type { MarketState, ArticleAnalysis } from '../types';
 
 interface MarketOverviewProps {
   marketState: MarketState;
   isLoading: boolean;
   isLiveMode: boolean;
+  onRefreshMarket: () => void;
 }
 
-export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isLoading, isLiveMode }) => {
+export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isLoading, isLiveMode, onRefreshMarket }) => {
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
 
   if (isLoading) {
@@ -69,6 +70,26 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
           </span>
         </div>
       )}
+
+      {/* Header row: title + as-of timestamp + refresh button */}
+      <div className="flex-between" style={{ marginBottom: '1.25rem' }}>
+        <div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 800 }}>Global Market Overview</h2>
+          {marketState.lastUpdated && (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              As of {marketState.lastUpdated}
+            </span>
+          )}
+        </div>
+        <button
+          className="btn-primary"
+          onClick={onRefreshMarket}
+          style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', gap: '0.35rem' }}
+        >
+          <RefreshCw size={14} />
+          Refresh Analysis
+        </button>
+      </div>
 
       {/* 14-Day Forecast Banner */}
       <div className={`glass-panel forecast-banner ${prediction.stance}`}>

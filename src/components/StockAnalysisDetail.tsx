@@ -124,7 +124,7 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
             </span>
           </h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Terminal Analysis Updated: {lastUpdated}
+            As of {lastUpdated}
           </span>
         </div>
 

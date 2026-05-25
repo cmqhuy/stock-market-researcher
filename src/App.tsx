@@ -286,7 +286,7 @@ export function App() {
   // Trigger initial market analysis on mount, and always refresh watchlist prices (quotes don't need API key)
   useEffect(() => {
     const now = Date.now();
-    const isExpired = !marketState.timestamp || (now - marketState.timestamp > 15 * 60 * 1000);
+    const isExpired = !marketState.timestamp || (now - marketState.timestamp > 60 * 60 * 1000);
     // Use the actual isSimulated flag — not the absence of timestamp (which was always false after we added timestamps to mocks)
     const isSimulated = marketState.isSimulated === true;
     const needsRefetch = isExpired || (settings.mode === 'live' && isSimulated);
@@ -348,7 +348,7 @@ export function App() {
     if (selectedTicker !== 'MARKET') {
       const existing = stockAnalyses[selectedTicker];
       const now = Date.now();
-      const isExpired = !existing || !existing.timestamp || (now - existing.timestamp > 15 * 60 * 1000);
+      const isExpired = !existing || !existing.timestamp || (now - existing.timestamp > 60 * 60 * 1000);
       // Use the actual isSimulated flag — not the absence of timestamp
       const isSimulated = existing?.isSimulated === true;
       const needsRefetch = isExpired || (settings.mode === 'live' && isSimulated);
@@ -450,7 +450,12 @@ export function App() {
 
         <div className="main-column">
           {selectedTicker === 'MARKET' ? (
-            <MarketOverview marketState={marketState} isLoading={isLoadingMarket} isLiveMode={settings.mode === 'live'} />
+            <MarketOverview
+              marketState={marketState}
+              isLoading={isLoadingMarket}
+              isLiveMode={settings.mode === 'live'}
+              onRefreshMarket={() => handleRunMarketAnalysis(settings)}
+            />
           ) : (
             <StockAnalysisDetail
               stockAnalysis={stockAnalyses[selectedTicker] || null}
