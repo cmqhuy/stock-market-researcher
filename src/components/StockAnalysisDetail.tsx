@@ -245,7 +245,7 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
                     ) : (
                       <div style={{ marginRight: '0.5rem' }}>
                         <span className="badge-unchanged" style={{ background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                          AI Grounding
+                          {isLiveMode ? "AI Grounding" : "Live Headline"}
                         </span>
                       </div>
                     )}
@@ -335,10 +335,12 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
                         </div>
                         <div className="consensus-text-area">
                           <h5 className="consensus-heading" style={{ color: 'var(--primary)' }}>
-                            AI Search Grounding Source
+                            {!isLiveMode ? "AI Roundtable Opinions Disabled" : "AI Search Grounding Source"}
                           </h5>
                           <p className="consensus-reasoning" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            This article was retrieved dynamically by the panel via live search grounding. It was cross-referenced to validate consensus confidence levels and shape the final 14-day projection.
+                            {!isLiveMode 
+                              ? "AI analysis is disabled in Demo Mode. Enable Live Mode in Settings with an API key to evaluate the expert roundtable." 
+                              : "This article was retrieved dynamically by the panel via live search grounding. It was cross-referenced to validate consensus confidence levels and shape the final 14-day projection."}
                           </p>
                           {article.url && (
                             <a

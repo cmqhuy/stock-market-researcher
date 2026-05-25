@@ -59,99 +59,103 @@ export function useStockAnalysis(
 
     setIsLoadingStock(true);
     try {
-      if (currentSettings.mode === 'live') {
-        // ALWAYS fetch real stock news and latest price/change in parallel
-        const [articles, quote] = await Promise.all([
+      // ALWAYS fetch real stock news and latest price/change in parallel
+      let activeArticles: NewsArticle[] = [];
+      let quote: any = null;
+      try {
+        const [articles, quoteData] = await Promise.all([
           newsService.fetchLatestNews(cleanTicker),
           stockService.fetchQuote(cleanTicker).catch(() => null)
         ]);
-        const activeArticles = articles.slice(0, 10);
-        const nameToUse = quote?.name || name;
+        activeArticles = articles.slice(0, 10);
+        quote = quoteData;
+      } catch (fetchError) {
+        console.warn(`Failed to fetch live stock data for ${cleanTicker}, using local mock fallback:`, fetchError);
+      }
 
-        if (currentSettings.apiKey) {
-          // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
-          const { newsAnalyses, prediction, groundingArticles } = await aiService.analyzeNewsAndPredict(
-            currentSettings.apiKey,
-            activeArticles,
-            { ticker: cleanTicker, name: nameToUse }
-          );
+      const nameToUse = quote?.name || name;
+      const isLive = currentSettings.mode === 'live' && !!currentSettings.apiKey;
 
-          // De-duplicate and merge grounding articles from Gemini search
-          const combinedArticles = [...activeArticles];
-          (groundingArticles || []).forEach(ga => {
-            const isDup = activeArticles.some(
-              aa => (aa.url && aa.url === ga.url) || 
-                    aa.title.toLowerCase().replace(/[^a-z0-9]/g, '') === ga.title.toLowerCase().replace(/[^a-z0-9]/g, '')
-            );
-            if (!isDup) combinedArticles.push(ga);
-          });
-
-          const finalAnalysis: StockAnalysis = {
-            ticker: cleanTicker,
-            name: nameToUse,
-            prediction,
-            news: combinedArticles,
-            newsAnalyses,
-            lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
-            timestamp: Date.now(),
-            isSimulated: false
-          };
-
-          // Cache the analysis
-          setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: finalAnalysis }));
-
-          // Update predictions, confidence scores, and current price/change in the watchlist
-          setWatchlist((prevWatchlist) =>
-            prevWatchlist.map((stock) =>
-              stock.ticker === cleanTicker
-                ? {
-                    ...stock,
-                    name: nameToUse,
-                    price: quote?.price || stock.price,
-                    change: quote?.change || stock.change,
-                    history: quote?.history && quote.history.length > 0 ? quote.history : stock.history,
-                    historyTimestamps: quote?.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps,
-                    prediction: prediction.stance,
-                    confidence: prediction.confidence,
-                  }
-                : stock
-            )
-          );
-        } else {
-          // Live fallback with mock analysis on real articles
-          const mockAnalysis = generateMockStockAnalysis(cleanTicker, activeArticles);
-          setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: mockAnalysis }));
-
-          setWatchlist((prevWatchlist) =>
-            prevWatchlist.map((stock) =>
-              stock.ticker === cleanTicker
-                ? {
-                    ...stock,
-                    name: nameToUse,
-                    price: quote?.price || stock.price,
-                    change: quote?.change || stock.change,
-                    history: quote?.history && quote.history.length > 0 ? quote.history : stock.history,
-                    historyTimestamps: quote?.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps,
-                    prediction: mockAnalysis.prediction.stance,
-                    confidence: mockAnalysis.prediction.confidence,
-                  }
-                : stock
-            )
-          );
+      if (isLive) {
+        let finalArticles = activeArticles;
+        if (finalArticles.length === 0) {
+          // Fallback to offline mock articles
+          const offlineMock = generateMockStockAnalysis(cleanTicker);
+          finalArticles = offlineMock.news;
         }
+
+        // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
+        const { newsAnalyses, prediction, groundingArticles } = await aiService.analyzeNewsAndPredict(
+          currentSettings.apiKey!,
+          finalArticles,
+          { ticker: cleanTicker, name: nameToUse }
+        );
+
+        // De-duplicate and merge grounding articles from Gemini search
+        const combinedArticles = [...finalArticles];
+        (groundingArticles || []).forEach(ga => {
+          const isDup = finalArticles.some(
+            aa => (aa.url && aa.url === ga.url) || 
+                  aa.title.toLowerCase().replace(/[^a-z0-9]/g, '') === ga.title.toLowerCase().replace(/[^a-z0-9]/g, '')
+          );
+          if (!isDup) combinedArticles.push(ga);
+        });
+
+        const finalAnalysis: StockAnalysis = {
+          ticker: cleanTicker,
+          name: nameToUse,
+          prediction,
+          news: combinedArticles,
+          newsAnalyses,
+          lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
+          timestamp: Date.now(),
+          isSimulated: false
+        };
+
+        // Cache the analysis
+        setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: finalAnalysis }));
+
+        // Update predictions, confidence scores, and current price/change in the watchlist
+        setWatchlist((prevWatchlist) =>
+          prevWatchlist.map((stock) =>
+            stock.ticker === cleanTicker
+              ? {
+                  ...stock,
+                  name: nameToUse,
+                  price: quote?.price || stock.price,
+                  change: quote?.change || stock.change,
+                  history: quote?.history && quote.history.length > 0 ? quote.history : stock.history,
+                  historyTimestamps: quote?.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps,
+                  prediction: prediction.stance,
+                  confidence: prediction.confidence,
+                }
+              : stock
+          )
+        );
       } else {
-        // Instant Demo Mode: generate local mock analysis instantly without network calls
-        const mockAnalysis = generateMockStockAnalysis(cleanTicker);
-        setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: mockAnalysis }));
+        // Demo Mode (or Live Mode with missing API Key)
+        // Generate mock analysis based on real articles (if any)
+        const mockAnalysis = generateMockStockAnalysis(cleanTicker, activeArticles.length > 0 ? activeArticles : undefined);
+        const finalAnalysis: StockAnalysis = {
+          ...mockAnalysis,
+          newsAnalyses: {}, // AI analysis is disabled in Demo Mode
+          lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
+          timestamp: Date.now(),
+          isSimulated: true
+        };
+
+        setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: finalAnalysis }));
 
         setWatchlist((prevWatchlist) =>
           prevWatchlist.map((stock) =>
             stock.ticker === cleanTicker
               ? {
                   ...stock,
-                  name: name,
-                  price: stock.price || mockAnalysis.prediction.confidence * 2,
-                  change: stock.change || mockAnalysis.prediction.confidence / 10 - 5,
+                  name: nameToUse,
+                  price: quote?.price || stock.price || mockAnalysis.prediction.confidence * 2,
+                  change: quote?.change || stock.change || (mockAnalysis.prediction.confidence / 10 - 5),
+                  history: quote?.history && quote.history.length > 0 ? quote.history : stock.history,
+                  historyTimestamps: quote?.historyTimestamps && quote.historyTimestamps.length > 0 ? quote.historyTimestamps : stock.historyTimestamps,
                   prediction: mockAnalysis.prediction.stance,
                   confidence: mockAnalysis.prediction.confidence,
                 }
@@ -180,19 +184,23 @@ export function useStockAnalysis(
         // ignore
       }
 
-      const mockAnalysis = { 
-        ...generateMockStockAnalysis(cleanTicker, fallbackNews), 
-        timestamp: 0 // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
+      const mockAnalysis = generateMockStockAnalysis(cleanTicker, fallbackNews.length > 0 ? fallbackNews : undefined);
+      const finalAnalysis: StockAnalysis = {
+        ...mockAnalysis,
+        newsAnalyses: {}, // Empty in Demo Mode / Error fallback
+        lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
+        timestamp: 0, // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
+        isSimulated: true
       };
       
-      setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: mockAnalysis }));
+      setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: finalAnalysis }));
       setWatchlist((prevWatchlist) =>
         prevWatchlist.map((stock) =>
           stock.ticker === cleanTicker
             ? {
                 ...stock,
-                price: fallbackQuote?.price || stock.price,
-                change: fallbackQuote?.change || stock.change,
+                price: fallbackQuote?.price || stock.price || mockAnalysis.prediction.confidence * 2,
+                change: fallbackQuote?.change || stock.change || (mockAnalysis.prediction.confidence / 10 - 5),
                 history: fallbackQuote?.history && fallbackQuote.history.length > 0 ? fallbackQuote.history : stock.history,
                 historyTimestamps: fallbackQuote?.historyTimestamps && fallbackQuote.historyTimestamps.length > 0 ? fallbackQuote.historyTimestamps : stock.historyTimestamps,
                 prediction: mockAnalysis.prediction.stance,

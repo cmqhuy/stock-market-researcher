@@ -42,45 +42,60 @@ export function useMarketAnalysis(
   const runMarketAnalysis = useCallback(async (currentSettings: AppSettings) => {
     setIsLoadingMarket(true);
     try {
-      if (currentSettings.mode === 'live') {
-        // ALWAYS fetch real market news headlines first
+      // ALWAYS fetch real market news headlines first
+      let activeArticles: NewsArticle[] = [];
+      try {
         const articles = await newsService.fetchLatestNews();
-        const activeArticles = articles.slice(0, 10);
+        activeArticles = articles.slice(0, 10);
+      } catch (newsError) {
+        console.warn('Failed to fetch live market news, using local mock fallback:', newsError);
+      }
 
-        if (currentSettings.apiKey) {
-          // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
-          const { newsAnalyses, prediction, groundingArticles } = await aiService.analyzeNewsAndPredict(
-            currentSettings.apiKey,
-            activeArticles
-          );
+      const isLive = currentSettings.mode === 'live' && !!currentSettings.apiKey;
 
-          // De-duplicate and merge grounding articles from Gemini search
-          const combinedArticles = [...activeArticles];
-          (groundingArticles || []).forEach(ga => {
-            const isDup = activeArticles.some(
-              aa => (aa.url && aa.url === ga.url) || 
-                    aa.title.toLowerCase().replace(/[^a-z0-9]/g, '') === ga.title.toLowerCase().replace(/[^a-z0-9]/g, '')
-            );
-            if (!isDup) combinedArticles.push(ga);
-          });
-
-          setMarketState({
-            prediction,
-            news: combinedArticles,
-            newsAnalyses,
-            lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
-            timestamp: Date.now(),
-            isSimulated: false
-          });
-        } else {
-          // Demo mode fallback — generate mock analyses but on REAL live articles!
-          const mockMarket = generateMockMarketAnalysis(activeArticles);
-          setMarketState(mockMarket);
+      if (isLive) {
+        if (activeArticles.length === 0) {
+          // Fallback to offline mock articles so Gemini can run on something
+          const offlineMock = generateMockMarketAnalysis();
+          activeArticles = offlineMock.news;
         }
+
+        // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
+        const { newsAnalyses, prediction, groundingArticles } = await aiService.analyzeNewsAndPredict(
+          currentSettings.apiKey!,
+          activeArticles
+        );
+
+        // De-duplicate and merge grounding articles from Gemini search
+        const combinedArticles = [...activeArticles];
+        (groundingArticles || []).forEach(ga => {
+          const isDup = activeArticles.some(
+            aa => (aa.url && aa.url === ga.url) || 
+                  aa.title.toLowerCase().replace(/[^a-z0-9]/g, '') === ga.title.toLowerCase().replace(/[^a-z0-9]/g, '')
+          );
+          if (!isDup) combinedArticles.push(ga);
+        });
+
+        setMarketState({
+          prediction,
+          news: combinedArticles,
+          newsAnalyses,
+          lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
+          timestamp: Date.now(),
+          isSimulated: false
+        });
       } else {
-        // Instant Demo Mode: generate local mock analysis instantly without network calls
-        const mockMarket = generateMockMarketAnalysis();
-        setMarketState(mockMarket);
+        // Demo Mode (or Live Mode with missing API Key)
+        // Generate mock prediction based on active articles (if any)
+        const mockMarket = generateMockMarketAnalysis(activeArticles.length > 0 ? activeArticles : undefined);
+        setMarketState({
+          prediction: mockMarket.prediction,
+          news: mockMarket.news,
+          newsAnalyses: {}, // AI analysis is disabled in Demo Mode
+          lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
+          timestamp: Date.now(),
+          isSimulated: true
+        });
       }
     } catch (error) {
       console.error('Market analysis failed:', error);
@@ -97,9 +112,14 @@ export function useMarketAnalysis(
       } catch {
         // ignore
       }
+      const mockMarket = generateMockMarketAnalysis(fallbackNews);
       setMarketState({
-        ...generateMockMarketAnalysis(fallbackNews),
-        timestamp: 0 // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
+        prediction: mockMarket.prediction,
+        news: mockMarket.news,
+        newsAnalyses: {}, // Empty in Demo Mode / Error fallback
+        lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
+        timestamp: 0, // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
+        isSimulated: true
       });
     } finally {
       setIsLoadingMarket(false);
