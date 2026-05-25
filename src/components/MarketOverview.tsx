@@ -70,11 +70,13 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
 
   return (
     <div className="stock-detail-view">
-      {isLiveMode && marketState.isSimulated && (
+      {(!isLiveMode || marketState.isSimulated) && (
         <div className="simulation-warning-banner">
           <AlertTriangle className="warning-icon" size={16} />
           <span>
-            <strong>Demo Simulation Mode Fallback:</strong> The live Gemini analysis failed to execute or is unavailable. Showing simulated market projections.
+            <strong>Simulation Sandbox Active:</strong> {!isLiveMode 
+              ? "Running in offline demo mode. All predictions and roundtables are simulated locally." 
+              : "Live analysis was unavailable. Showing simulated projections and local panel consensus."}
           </span>
         </div>
       )}

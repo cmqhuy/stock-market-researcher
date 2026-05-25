@@ -75,11 +75,13 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
 
   return (
     <div className="stock-detail-view">
-      {isLiveMode && stockAnalysis && stockAnalysis.isSimulated && (
+      {(!isLiveMode || (stockAnalysis && stockAnalysis.isSimulated)) && (
         <div className="simulation-warning-banner">
           <AlertTriangle className="warning-icon" size={16} />
           <span>
-            <strong>Demo Simulation Mode Fallback:</strong> The live Gemini analysis failed to execute or is unavailable. Showing simulated stock projections.
+            <strong>Simulation Sandbox Active:</strong> {!isLiveMode 
+              ? "Running in offline demo mode. All predictions and roundtables are simulated locally." 
+              : "Live analysis was unavailable. Showing simulated projections and local panel consensus."}
           </span>
         </div>
       )}
