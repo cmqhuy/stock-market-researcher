@@ -8,7 +8,7 @@ import { StockAnalysisDetail } from './components/StockAnalysisDetail';
 import type { AppSettings, WatchlistStock, MarketState, StockAnalysis } from './types';
 import { getMockWatchlist, generateMockMarketAnalysis, generateMockStockAnalysis, MOCK_TICKERS } from './services/mockDataGenerator';
 import { fetchLatestNews } from './services/newsService';
-import { analyzeNewsArticle, synthesize14DayPrediction } from './services/geminiService';
+import { analyzeNewsAndPredict } from './services/geminiService';
 
 export function App() {
   // Load settings from localStorage or defaults
@@ -58,43 +58,17 @@ export function App() {
       if (currentSettings.mode === 'live' && currentSettings.apiKey) {
         // Fetch real market news headlines
         const articles = await fetchLatestNews();
-        
-        // Analyze each news article in parallel using Gemini
-        const errors: any[] = [];
-        const analysisPromises = articles.slice(0, 5).map(async (article) => {
-          try {
-            const analysis = await analyzeNewsArticle(currentSettings.apiKey, article);
-            return { article, analysis };
-          } catch (err) {
-            console.warn(`Failed to analyze market article: "${article.title}"`, err);
-            errors.push(err);
-            return null;
-          }
-        });
-        
-        const results = await Promise.all(analysisPromises);
-        const articlesWithAnalysis = results.filter((r): r is { article: typeof articles[0]; analysis: any } => r !== null);
+        const activeArticles = articles.slice(0, 5);
 
-        if (articlesWithAnalysis.length === 0) {
-          const firstError = errors[0];
-          throw firstError || new Error('All market article analyses failed.');
-        }
-
-        // Synthesize 14-day market prediction
-        const prediction = await synthesize14DayPrediction(
+        // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
+        const { newsAnalyses, prediction } = await analyzeNewsAndPredict(
           currentSettings.apiKey,
-          articlesWithAnalysis
+          activeArticles
         );
-
-        // Group analyses into dictionary
-        const newsAnalyses: Record<string, any> = {};
-        articlesWithAnalysis.forEach((item) => {
-          newsAnalyses[item.article.id] = item.analysis;
-        });
 
         setMarketState({
           prediction,
-          news: articlesWithAnalysis.map((item) => item.article),
+          news: activeArticles,
           newsAnalyses,
           lastUpdated: new Date().toLocaleDateString()
         });
@@ -127,47 +101,20 @@ export function App() {
       if (currentSettings.mode === 'live' && currentSettings.apiKey) {
         // Fetch real stock news from Yahoo Finance RSS
         const articles = await fetchLatestNews(cleanTicker);
+        const activeArticles = articles.slice(0, 5); // Limit to 5 articles to keep context clean and fast
 
-        // Analyze at least 5 articles in parallel using Gemini
-        const errors: any[] = [];
-        const analysisPromises = articles.slice(0, 6).map(async (article) => {
-          try {
-            const analysis = await analyzeNewsArticle(currentSettings.apiKey, article, { ticker: cleanTicker, name });
-            return { article, analysis };
-          } catch (err) {
-            console.warn(`Failed to analyze article: "${article.title}"`, err);
-            errors.push(err);
-            return null;
-          }
-        });
-
-        const results = await Promise.all(analysisPromises);
-        const articlesWithAnalysis = results.filter((r): r is { article: typeof articles[0]; analysis: any } => r !== null);
-
-        if (articlesWithAnalysis.length === 0) {
-          const firstError = errors[0];
-          throw firstError || new Error(`All analyses failed for ticker ${cleanTicker}`);
-        }
-
-        // Synthesize 14-day stock prediction
-        const prediction = await synthesize14DayPrediction(
+        // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
+        const { newsAnalyses, prediction } = await analyzeNewsAndPredict(
           currentSettings.apiKey,
-          articlesWithAnalysis,
-          cleanTicker,
-          name
+          activeArticles,
+          { ticker: cleanTicker, name }
         );
-
-        // Group analyses into dictionary
-        const newsAnalyses: Record<string, any> = {};
-        articlesWithAnalysis.forEach((item) => {
-          newsAnalyses[item.article.id] = item.analysis;
-        });
 
         const finalAnalysis: StockAnalysis = {
           ticker: cleanTicker,
           name,
           prediction,
-          news: articlesWithAnalysis.map((item) => item.article),
+          news: activeArticles,
           newsAnalyses,
           lastUpdated: new Date().toLocaleDateString(),
         };
