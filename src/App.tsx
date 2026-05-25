@@ -45,9 +45,15 @@ export function App() {
     const savedMarket = localStorage.getItem('omega_market_analysis');
     if (savedMarket) {
       try {
-        return JSON.parse(savedMarket);
+        const parsed = JSON.parse(savedMarket);
+        if (parsed && typeof parsed === 'object' && parsed.prediction && Array.isArray(parsed.news)) {
+          parsed.newsAnalyses = parsed.newsAnalyses || {};
+          parsed.prediction.keyDrivers = Array.isArray(parsed.prediction.keyDrivers) ? parsed.prediction.keyDrivers : [];
+          parsed.prediction.mainRisks = Array.isArray(parsed.prediction.mainRisks) ? parsed.prediction.mainRisks : [];
+          return parsed;
+        }
       } catch (e) {
-        console.error('Failed to parse cached market state.');
+        console.error('Failed to parse cached market state, falling back to mock.');
       }
     }
     return generateMockMarketAnalysis();
@@ -57,7 +63,20 @@ export function App() {
     const savedAnalyses = localStorage.getItem('omega_stock_analyses');
     if (savedAnalyses) {
       try {
-        return JSON.parse(savedAnalyses);
+        const parsed = JSON.parse(savedAnalyses);
+        if (parsed && typeof parsed === 'object') {
+          const validated: Record<string, StockAnalysis> = {};
+          Object.keys(parsed).forEach((ticker) => {
+            const item = parsed[ticker];
+            if (item && typeof item === 'object' && item.prediction && Array.isArray(item.news)) {
+              item.newsAnalyses = item.newsAnalyses || {};
+              item.prediction.keyDrivers = Array.isArray(item.prediction.keyDrivers) ? item.prediction.keyDrivers : [];
+              item.prediction.mainRisks = Array.isArray(item.prediction.mainRisks) ? item.prediction.mainRisks : [];
+              validated[ticker] = item;
+            }
+          });
+          return validated;
+        }
       } catch (e) {
         console.error('Failed to parse cached stock analyses.');
       }

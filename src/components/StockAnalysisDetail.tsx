@@ -34,7 +34,24 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
     );
   }
 
-  const { ticker, name, prediction, news, newsAnalyses, lastUpdated } = stockAnalysis;
+  const ticker = stockAnalysis?.ticker || '';
+  const name = stockAnalysis?.name || '';
+  const prediction = stockAnalysis?.prediction || {
+    stance: 'unchanged',
+    confidence: 50,
+    summary: 'No prediction details available.',
+    keyDrivers: [],
+    mainRisks: []
+  };
+  const news = stockAnalysis?.news || [];
+  const newsAnalyses = stockAnalysis?.newsAnalyses || {};
+  const lastUpdated = stockAnalysis?.lastUpdated || '';
+
+  const stance = prediction.stance || 'unchanged';
+  const confidence = typeof prediction.confidence === 'number' ? prediction.confidence : 50;
+
+  const keyDrivers = Array.isArray(prediction.keyDrivers) ? prediction.keyDrivers : [];
+  const mainRisks = Array.isArray(prediction.mainRisks) ? prediction.mainRisks : [];
 
   const toggleExpandArticle = (id: string) => {
     setExpandedArticleId(expandedArticleId === id ? null : id);
@@ -92,30 +109,30 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
       </div>
 
       {/* 14-Day Prediction Banner */}
-      <div className={`glass-panel forecast-banner ${prediction.stance}`}>
+      <div className={`glass-panel forecast-banner ${stance}`}>
         <div className="forecast-header">
           <div className="forecast-main-stance">
             <span className="forecast-title">14-Day Stock Projection</span>
-            <span className={`forecast-value ${prediction.stance}`}>
-              {prediction.stance.toUpperCase()}
+            <span className={`forecast-value ${stance}`}>
+              {stance.toUpperCase()}
             </span>
           </div>
 
           <div className="forecast-confidence">
             <span className="forecast-title">Panel Confidence</span>
             <span style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-main)' }}>
-              {prediction.confidence}%
+              {confidence}%
             </span>
             <div className="confidence-bar-bg">
               <div
                 className="confidence-bar-fill"
-                style={{ width: `${prediction.confidence}%` }}
+                style={{ width: `${confidence}%` }}
               ></div>
             </div>
           </div>
         </div>
 
-        <p className="forecast-summary">{prediction.summary}</p>
+        <p className="forecast-summary">{prediction.summary || 'Outlook details pending review.'}</p>
 
         <div className="forecast-details">
           <div>
@@ -124,7 +141,7 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
               Key Drivers
             </span>
             <ul className="detail-list">
-              {prediction.keyDrivers.map((driver, idx) => (
+              {keyDrivers.map((driver, idx) => (
                 <li key={idx}>{driver}</li>
               ))}
             </ul>
@@ -136,7 +153,7 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
               Primary Risks
             </span>
             <ul className="detail-list">
-              {prediction.mainRisks.map((risk, idx) => (
+              {mainRisks.map((risk, idx) => (
                 <li key={idx}>{risk}</li>
               ))}
             </ul>
@@ -168,19 +185,25 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
                       <span className="news-source-tag">{article.source}</span>
                       <span>•</span>
                       <span>{article.time}</span>
-                      {analysis && (
+                      {analysis && Array.isArray(analysis.agentAnalyses) && (
                         <>
                           <span>•</span>
                           <div className="agent-avatars-row">
-                            {analysis.agentAnalyses.map((agent, i) => (
-                              <div
-                                key={i}
-                                className={`agent-mini-dot ${getAgentAvatarClass(agent.agentName)}`}
-                                title={`${agent.agentName}: ${agent.stance.toUpperCase()} (${agent.confidence}%)`}
-                              >
-                                {getAgentInitials(agent.agentName)}
-                              </div>
-                            ))}
+                            {analysis.agentAnalyses.map((agent, i) => {
+                              if (!agent) return null;
+                              const agentName = agent.agentName || 'Analyst';
+                              const agentStance = agent.stance || 'unchanged';
+                              const agentConfidence = typeof agent.confidence === 'number' ? agent.confidence : 50;
+                              return (
+                                <div
+                                  key={i}
+                                  className={`agent-mini-dot ${getAgentAvatarClass(agentName)}`}
+                                  title={`${agentName}: ${agentStance.toUpperCase()} (${agentConfidence}%)`}
+                                >
+                                  {getAgentInitials(agentName)}
+                                </div>
+                              );
+                            })}
                           </div>
                         </>
                       )}
@@ -191,20 +214,20 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
                   <div className="news-item-right">
                     {analysis ? (
                       <div style={{ marginRight: '0.5rem' }}>
-                        {analysis.consensusStance === 'up' ? (
+                        {(analysis.consensusStance || 'unchanged') === 'up' ? (
                           <span className="badge-up">
                             <TrendingUp size={12} />
-                            Up ({analysis.consensusConfidence}%)
+                            Up ({analysis.consensusConfidence ?? 50}%)
                           </span>
-                        ) : analysis.consensusStance === 'down' ? (
+                        ) : (analysis.consensusStance || 'unchanged') === 'down' ? (
                           <span className="badge-down">
                             <TrendingDown size={12} />
-                            Down ({analysis.consensusConfidence}%)
+                            Down ({analysis.consensusConfidence ?? 50}%)
                           </span>
                         ) : (
                           <span className="badge-unchanged">
                             <Minus size={12} />
-                            Flat ({analysis.consensusConfidence}%)
+                            Flat ({analysis.consensusConfidence ?? 50}%)
                           </span>
                         )}
                       </div>
@@ -231,43 +254,52 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
                       Expert Panel Breakdown
                     </h4>
 
-                    {analysis ? (
+                    {analysis && Array.isArray(analysis.agentAnalyses) ? (
                       <>
                         <div className="expert-grid">
-                          {analysis.agentAnalyses.map((agent) => (
-                            <div key={agent.agentName} className="expert-card">
-                              <div className="expert-card-header">
-                                <div className="expert-profile">
-                                  <div className={`expert-avatar ${getAgentAvatarClass(agent.agentName)}`}>
-                                    {getAgentInitials(agent.agentName)}
+                          {analysis.agentAnalyses.map((agent, agentIdx) => {
+                            if (!agent) return null;
+                            const agentName = agent.agentName || 'Analyst';
+                            const agentRole = agent.agentRole || 'Roundtable Member';
+                            const agentStance = agent.stance || 'unchanged';
+                            const agentConfidence = typeof agent.confidence === 'number' ? agent.confidence : 50;
+                            const agentCommentary = agent.commentary || 'Reviewing recent updates.';
+                            
+                            return (
+                              <div key={agentName || agentIdx} className="expert-card">
+                                <div className="expert-card-header">
+                                  <div className="expert-profile">
+                                    <div className={`expert-avatar ${getAgentAvatarClass(agentName)}`}>
+                                      {getAgentInitials(agentName)}
+                                    </div>
+                                    <div className="expert-profile-text">
+                                      <span className="expert-name">{agentName}</span>
+                                      <span className="expert-role">{(agentRole || '').split(' ')[0]}</span>
+                                    </div>
                                   </div>
-                                  <div className="expert-profile-text">
-                                    <span className="expert-name">{agent.agentName}</span>
-                                    <span className="expert-role">{agent.agentRole.split(' ')[0]}</span>
+                                  <div>
+                                    {agentStance === 'up' ? (
+                                      <span className="badge-up" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
+                                        Up
+                                      </span>
+                                    ) : agentStance === 'down' ? (
+                                      <span className="badge-down" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
+                                        Down
+                                      </span>
+                                    ) : (
+                                      <span className="badge-unchanged" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
+                                        Flat
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
-                                <div>
-                                  {agent.stance === 'up' ? (
-                                    <span className="badge-up" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
-                                      Up
-                                    </span>
-                                  ) : agent.stance === 'down' ? (
-                                    <span className="badge-down" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
-                                      Down
-                                    </span>
-                                  ) : (
-                                    <span className="badge-unchanged" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
-                                      Flat
-                                    </span>
-                                  )}
-                                </div>
+                                <p className="expert-commentary">"{agentCommentary}"</p>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-dark)', textAlign: 'right' }}>
+                                  Confidence: {agentConfidence}%
+                                </span>
                               </div>
-                              <p className="expert-commentary">"{agent.commentary}"</p>
-                              <span style={{ fontSize: '0.65rem', color: 'var(--text-dark)', textAlign: 'right' }}>
-                                Confidence: {agent.confidence}%
-                              </span>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
 
                         <div className="consensus-block">
@@ -277,11 +309,11 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
                           <div className="consensus-text-area">
                             <h5 className="consensus-heading">
                               Expert Consensus Verdict:{' '}
-                              <span style={{ color: analysis.consensusStance === 'up' ? 'var(--up-color)' : analysis.consensusStance === 'down' ? 'var(--down-color)' : 'var(--unchanged-color)' }}>
-                                {analysis.consensusStance.toUpperCase()} ({analysis.consensusConfidence}% confidence)
+                              <span style={{ color: (analysis.consensusStance || 'unchanged') === 'up' ? 'var(--up-color)' : (analysis.consensusStance || 'unchanged') === 'down' ? 'var(--down-color)' : 'var(--unchanged-color)' }}>
+                                {(analysis.consensusStance || 'unchanged').toUpperCase()} ({analysis.consensusConfidence ?? 50}% confidence)
                               </span>
                             </h5>
-                            <p className="consensus-reasoning">{analysis.reasoning}</p>
+                            <p className="consensus-reasoning">{analysis.reasoning || 'No consensus reasoning provided.'}</p>
                           </div>
                         </div>
                       </>
