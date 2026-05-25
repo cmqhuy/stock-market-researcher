@@ -52,8 +52,15 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
 
   useEffect(() => {
     if (isLoading) {
-      const randomIndex = Math.floor(Math.random() * LOADING_MESSAGES.length);
-      setCurrentLoadingMessage(LOADING_MESSAGES[randomIndex]);
+      // Pick initial random one
+      const pickRandom = () => {
+        const randomIndex = Math.floor(Math.random() * LOADING_MESSAGES.length);
+        setCurrentLoadingMessage(LOADING_MESSAGES[randomIndex]);
+      };
+      pickRandom();
+
+      const interval = setInterval(pickRandom, 5000);
+      return () => clearInterval(interval);
     }
   }, [isLoading]);
 

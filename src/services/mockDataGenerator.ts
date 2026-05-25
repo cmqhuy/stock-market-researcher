@@ -39,8 +39,218 @@ export const getMockWatchlist = (): WatchlistStock[] => {
   }));
 };
 
+function estimateSentiment(title: string, summary: string): 'up' | 'down' | 'unchanged' {
+  const text = (title + ' ' + (summary || '')).toLowerCase();
+  const positiveWords = [
+    'surge', 'jump', 'rise', 'soar', 'beat', 'growth', 'gain', 'rally', 'positive', 
+    'optimism', 'bullish', 'exceed', 'higher', 'profit', 'expansion', 'buy', 'win',
+    'record high', 'upgrade', 'strong', 'boost', 'acquisition', 'partner', 'agree'
+  ];
+  const negativeWords = [
+    'plunge', 'drop', 'fall', 'sink', 'miss', 'decline', 'loss', 'bearish', 'slump', 
+    'worry', 'concern', 'pessimism', 'inflation', 'cut', 'rates rise', 'rate hike',
+    'downside', 'lawsuit', 'fine', 'investigate', 'shrink', 'sell', 'bankrupt',
+    'headwind', 'warn', 'debt', 'risk', 'crisis', 'slashes'
+  ];
+
+  let positiveScore = 0;
+  let negativeScore = 0;
+
+  positiveWords.forEach(word => {
+    if (text.includes(word)) positiveScore++;
+  });
+
+  negativeWords.forEach(word => {
+    if (text.includes(word)) negativeScore++;
+  });
+
+  if (positiveScore > negativeScore) return 'up';
+  if (negativeScore > positiveScore) return 'down';
+  return 'unchanged';
+}
+
+export const generateMockAnalysisForNews = (
+  articles: NewsArticle[],
+  targetName: string
+): {
+  newsAnalyses: Record<string, ArticleAnalysis>;
+  prediction: Prediction14Day;
+} => {
+  const newsAnalyses: Record<string, ArticleAnalysis> = {};
+  let totalUpScore = 0;
+  let totalDownScore = 0;
+
+  articles.forEach((article) => {
+    const impact = estimateSentiment(article.title, article.summary || '');
+
+    let mmStance: 'up' | 'down' | 'unchanged' = 'unchanged';
+    let vaStance: 'up' | 'down' | 'unchanged' = 'unchanged';
+    let moStance: 'up' | 'down' | 'unchanged' = 'unchanged';
+    let cwStance: 'up' | 'down' | 'unchanged' = 'unchanged';
+
+    if (impact === 'up') {
+      mmStance = 'up';
+      vaStance = Math.random() > 0.3 ? 'up' : 'unchanged';
+      moStance = Math.random() > 0.5 ? 'up' : 'unchanged';
+      cwStance = 'up';
+      totalUpScore += 2;
+    } else if (impact === 'down') {
+      mmStance = 'down';
+      vaStance = Math.random() > 0.3 ? 'down' : 'unchanged';
+      moStance = 'down';
+      cwStance = 'down';
+      totalDownScore += 2;
+    } else {
+      mmStance = Math.random() > 0.5 ? 'up' : 'down';
+      vaStance = 'unchanged';
+      moStance = 'unchanged';
+      cwStance = Math.random() > 0.5 ? 'up' : 'unchanged';
+    }
+
+    const confBase = 60 + Math.floor(Math.random() * 30);
+
+    const agentAnalyses: AgentAnalysis[] = [
+      {
+        agentName: 'Momentum Maverick',
+        agentRole: 'Daytrader (Technical & Momentum)',
+        stance: mmStance,
+        confidence: confBase + 5,
+        commentary: mmStance === 'up'
+          ? `High volume breakout setup following this news. Daily momentum indicators are shifting bullish. Long entry is favored.`
+          : mmStance === 'down'
+            ? `Price is breaking through key moving average support. Downside volume acceleration is strong. Short setup.`
+            : `Sideways consolidation range. No clear breakout trigger. I'm staying flat and waiting for volume confirmation.`
+      },
+      {
+        agentName: 'Value Anchor',
+        agentRole: 'Value Investor (Fundamentals & Moat)',
+        stance: vaStance,
+        confidence: confBase - 5,
+        commentary: vaStance === 'up'
+          ? `This development improves long-term cash flow predictability and enhances structural competitive advantage.`
+          : vaStance === 'down'
+            ? `Near-term macro or operational headwind compresses margin outlooks slightly. Valuation multiples should adjust.`
+            : `Noise in the headlines has minimal effect on the underlying business cash flows. Core investment thesis remains intact.`
+      },
+      {
+        agentName: 'Macro Oracle',
+        agentRole: 'Macro Strategist (Geopolitics & Policy)',
+        stance: moStance,
+        confidence: confBase,
+        commentary: moStance === 'up'
+          ? `Favorable sector tailwinds and positive policy setups. Macro liquidity vectors are supportive.`
+          : moStance === 'down'
+            ? `Macro conditions indicate restrictive central bank positions. Rising yields present structural headwind pressure.`
+            : `High-level rates and central bank policies dictate sector rotation. Headline updates are minor in comparison.`
+      },
+      {
+        agentName: 'Crowd Whisperer',
+        agentRole: 'Sentiment Analyst (Retail & Options)',
+        stance: cwStance,
+        confidence: confBase + 8,
+        commentary: cwStance === 'up'
+          ? `Social media discussions are surging with extreme optimism. Heavy retail options call buying detected.`
+          : cwStance === 'down'
+            ? `Fear-and-greed gauges are retracting. Put sweeps are rising as panic retail chatter spreads.`
+            : `Retail flow metrics are neutral. General options volume is balanced between call and put activity.`
+      }
+    ];
+
+    const stances = agentAnalyses.map(a => a.stance);
+    const upCount = stances.filter(s => s === 'up').length;
+    const downCount = stances.filter(s => s === 'down').length;
+    const consensusStance = upCount > downCount ? 'up' : downCount > upCount ? 'down' : 'unchanged';
+    const averageConf = Math.round(agentAnalyses.reduce((acc, curr) => acc + curr.confidence, 0) / 4);
+
+    newsAnalyses[article.id] = {
+      articleId: article.id,
+      consensusStance,
+      consensusConfidence: averageConf,
+      reasoning: consensusStance === 'up'
+        ? `Bullish consensus. Technical indicators show solid breakout potential aligned with positive options flow.`
+        : consensusStance === 'down'
+          ? `Bearish consensus. Operational or macro headwinds outweigh short-term positive sentiment factors.`
+          : `Split consensus. The experts are divided between short-term momentum buying and long-term valuation resistance.`,
+      agentAnalyses
+    };
+  });
+
+  // Synthesize 14-day prediction
+  let finalStance: 'up' | 'down' | 'unchanged' = 'unchanged';
+  let finalConfidence = 60;
+  let summary = '';
+  let keyDrivers: string[] = [];
+  let mainRisks: string[] = [];
+
+  if (totalUpScore > totalDownScore + 1) {
+    finalStance = 'up';
+    finalConfidence = 70 + Math.min(25, (totalUpScore - totalDownScore) * 5);
+    summary = `The 14-day consensus for ${targetName} is bullish. A strong alignment of positive catalysts and sentiment indicators suggests upward continuation, overcoming near-term resistance levels.`;
+    keyDrivers = [
+      `Strengthening momentum curves on daily charts.`,
+      `Resilient retail flow metrics and option call sweeps.`,
+      `Favorable fundamental trends supporting margin expansion.`
+    ];
+    mainRisks = [
+      `Overextended technical patterns triggering quick profit-taking.`,
+      `Unexpected broad-market corrections from macro rate spikes.`,
+      `Sudden company-specific filings or regulatory judgments.`
+    ];
+  } else if (totalDownScore > totalUpScore + 1) {
+    finalStance = 'down';
+    finalConfidence = 65 + Math.min(30, (totalDownScore - totalUpScore) * 5);
+    summary = `The 14-day projection is bearish for ${targetName}. Near-term liquidity hurdles, combined with macro rate concerns and negative volume developments, suggest index consolidation.`;
+    keyDrivers = [
+      `Persistent macro yield pressure compressively affecting multiples.`,
+      `Deteriorating volume trend profiles on index supports.`,
+      `Rising options implied volatility and hedged put blocks.`
+    ];
+    mainRisks = [
+      `Short-squeeze rallies triggered by oversold conditions.`,
+      `Sudden dovish pivot statements from key policy makers.`,
+      `Strong corporate earnings announcements supporting index floors.`
+    ];
+  } else {
+    finalStance = 'unchanged';
+    finalConfidence = 55 + Math.floor(Math.random() * 15);
+    summary = `The 14-day outlook is neutral/flat for ${targetName}. Sideways consolidation is expected, with support and resistance levels holding firm amid balanced fundamental and sentiment signals.`;
+    keyDrivers = [
+      `Balanced net options open interest profiles.`,
+      `Absence of near-term major policy decision catalysts.`,
+      `Index consolidation around institutional value zones.`
+    ];
+    mainRisks = [
+      `Surprising breakout above near-term resistance zones.`,
+      `Index breakdown below key daily exponential moving averages.`,
+      `Spike in options volume on unexpected news developments.`
+    ];
+  }
+
+  return {
+    newsAnalyses,
+    prediction: {
+      stance: finalStance,
+      confidence: finalConfidence,
+      summary,
+      keyDrivers,
+      mainRisks
+    }
+  };
+};
+
 // --- General Market Mock Data ---
-export const generateMockMarketAnalysis = (): MarketState => {
+export const generateMockMarketAnalysis = (customNews?: NewsArticle[]): MarketState => {
+  if (customNews && customNews.length > 0) {
+    const { newsAnalyses, prediction } = generateMockAnalysisForNews(customNews, 'Global Market Overview');
+    return {
+      prediction,
+      news: customNews,
+      newsAnalyses,
+      lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
+      timestamp: Date.now(),
+      isSimulated: true
+    };
+  }
   const news: NewsArticle[] = [
     {
       id: 'm-1',
@@ -424,9 +634,23 @@ const generateGenericNewsTemplates = (ticker: string, companyName: string): Arra
   ];
 };
 
-export const generateMockStockAnalysis = (ticker: string): StockAnalysis => {
+export const generateMockStockAnalysis = (ticker: string, customNews?: NewsArticle[]): StockAnalysis => {
   const cleanTicker = ticker.toUpperCase().trim();
   const name = MOCK_TICKERS[cleanTicker]?.name || `${cleanTicker} Corporation`;
+
+  if (customNews && customNews.length > 0) {
+    const { newsAnalyses, prediction } = generateMockAnalysisForNews(customNews, `${name} (${cleanTicker})`);
+    return {
+      ticker: cleanTicker,
+      name,
+      prediction,
+      news: customNews,
+      newsAnalyses,
+      lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
+      timestamp: Date.now(),
+      isSimulated: true
+    };
+  }
   
   const templates = MOCK_STOCK_NEWS_TEMPLATES[cleanTicker] || generateGenericNewsTemplates(cleanTicker, name);
   

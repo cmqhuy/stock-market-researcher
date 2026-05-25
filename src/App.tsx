@@ -5,7 +5,7 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { WatchlistPanel } from './components/WatchlistPanel';
 import { MarketOverview } from './components/MarketOverview';
 import { StockAnalysisDetail } from './components/StockAnalysisDetail';
-import type { AppSettings, WatchlistStock, MarketState, StockAnalysis } from './types';
+import type { AppSettings, WatchlistStock, MarketState, StockAnalysis, NewsArticle } from './types';
 import { getMockWatchlist, generateMockMarketAnalysis, generateMockStockAnalysis, MOCK_TICKERS } from './services/mockDataGenerator';
 import { fetchLatestNews, fetchLiveStockQuote } from './services/newsService';
 import { analyzeNewsAndPredict } from './services/geminiService';
@@ -138,11 +138,11 @@ export function App() {
   const handleRunMarketAnalysis = useCallback(async (currentSettings: AppSettings) => {
     setIsLoadingMarket(true);
     try {
-      if (currentSettings.mode === 'live' && currentSettings.apiKey) {
-        // Fetch real market news headlines
-        const articles = await fetchLatestNews();
-        const activeArticles = articles.slice(0, 5);
+      // ALWAYS fetch real market news headlines first
+      const articles = await fetchLatestNews();
+      const activeArticles = articles.slice(0, 10);
 
+      if (currentSettings.mode === 'live' && currentSettings.apiKey) {
         // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
         const { newsAnalyses, prediction } = await analyzeNewsAndPredict(
           currentSettings.apiKey,
@@ -158,8 +158,8 @@ export function App() {
           isSimulated: false
         });
       } else {
-        // Demo mode fallback
-        const mockMarket = generateMockMarketAnalysis();
+        // Demo mode fallback — generate mock analyses but on REAL live articles!
+        const mockMarket = generateMockMarketAnalysis(activeArticles);
         setMarketState(mockMarket);
       }
     } catch (error) {
@@ -169,8 +169,17 @@ export function App() {
         error,
         'Failed to execute Live Market Analysis. The app has fallen back to simulated data. Please verify your API key and connection.'
       );
-      // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
-      setMarketState({ ...generateMockMarketAnalysis(), timestamp: 0 });
+      // Fetch latest news anyway so we show live news even in error fallback
+      let fallbackNews: NewsArticle[] = [];
+      try {
+        fallbackNews = (await fetchLatestNews()).slice(0, 10);
+      } catch {
+        // ignore
+      }
+      setMarketState({
+        ...generateMockMarketAnalysis(fallbackNews),
+        timestamp: 0 // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
+      });
     } finally {
       setIsLoadingMarket(false);
     }
@@ -184,15 +193,15 @@ export function App() {
 
     setIsLoadingStock(true);
     try {
-      if (currentSettings.mode === 'live' && currentSettings.apiKey) {
-        // Fetch real stock news and latest price/change in parallel
-        const [articles, quote] = await Promise.all([
-          fetchLatestNews(cleanTicker),
-          fetchLiveStockQuote(cleanTicker).catch(() => null)
-        ]);
-        const activeArticles = articles.slice(0, 5); // Limit to 5 articles to keep context clean and fast
-        const nameToUse = quote?.name || name;
+      // ALWAYS fetch real stock news and latest price/change in parallel
+      const [articles, quote] = await Promise.all([
+        fetchLatestNews(cleanTicker),
+        fetchLiveStockQuote(cleanTicker).catch(() => null)
+      ]);
+      const activeArticles = articles.slice(0, 10);
+      const nameToUse = quote?.name || name;
 
+      if (currentSettings.mode === 'live' && currentSettings.apiKey) {
         // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
         const { newsAnalyses, prediction } = await analyzeNewsAndPredict(
           currentSettings.apiKey,
@@ -230,8 +239,8 @@ export function App() {
           )
         );
       } else {
-        // Demo mode fallback
-        const mockAnalysis = generateMockStockAnalysis(cleanTicker);
+        // Demo mode fallback — generate mock analyses but on REAL live articles and update real price/change!
+        const mockAnalysis = generateMockStockAnalysis(cleanTicker, activeArticles);
         setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: mockAnalysis }));
 
         setWatchlist((prevWatchlist) =>
@@ -239,6 +248,9 @@ export function App() {
             stock.ticker === cleanTicker
               ? {
                   ...stock,
+                  name: nameToUse,
+                  price: quote?.price || stock.price,
+                  change: quote?.change || stock.change,
                   prediction: mockAnalysis.prediction.stance,
                   confidence: mockAnalysis.prediction.confidence,
                 }
@@ -254,14 +266,32 @@ export function App() {
         `Failed to analyze ${cleanTicker} in Live Mode. The app has fallen back to simulated data. Please verify your API key and connection.`
       );
       
-      // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
-      const mockAnalysis = { ...generateMockStockAnalysis(cleanTicker), timestamp: 0 };
+      // Fetch latest news and quote anyway so we show live news and live prices even in error fallback
+      let fallbackNews: NewsArticle[] = [];
+      let fallbackQuote: any = null;
+      try {
+        [fallbackNews, fallbackQuote] = await Promise.all([
+          fetchLatestNews(cleanTicker),
+          fetchLiveStockQuote(cleanTicker).catch(() => null)
+        ]);
+        fallbackNews = fallbackNews.slice(0, 10);
+      } catch {
+        // ignore
+      }
+
+      const mockAnalysis = { 
+        ...generateMockStockAnalysis(cleanTicker, fallbackNews), 
+        timestamp: 0 // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
+      };
+      
       setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: mockAnalysis }));
       setWatchlist((prevWatchlist) =>
         prevWatchlist.map((stock) =>
           stock.ticker === cleanTicker
             ? {
                 ...stock,
+                price: fallbackQuote?.price || stock.price,
+                change: fallbackQuote?.change || stock.change,
                 prediction: mockAnalysis.prediction.stance,
                 confidence: mockAnalysis.prediction.confidence,
               }
