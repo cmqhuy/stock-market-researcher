@@ -251,13 +251,11 @@ export function useStockAnalysis(
       const existing = stockAnalyses[selectedTicker];
       const now = Date.now();
       const isExpired = !existing || !existing.timestamp || (now - existing.timestamp > 60 * 60 * 1000);
-      const isSimulated = existing?.isSimulated === true;
       const modeChanged = settings.mode !== lastUsedModeRef.current;
       const keyChanged = settings.apiKey !== lastUsedKeyRef.current;
       const tickerChanged = selectedTicker !== lastSelectedTickerRef.current;
 
       const needsRefetch = isExpired || 
-                            (settings.mode === 'live' && isSimulated) || 
                             (settings.mode === 'live' && keyChanged) || 
                             modeChanged;
 

@@ -136,12 +136,10 @@ export function useMarketAnalysis(
     if (!isActive) return;
     const now = Date.now();
     const isExpired = !marketState.timestamp || (now - marketState.timestamp > 60 * 60 * 1000);
-    const isSimulated = marketState.isSimulated === true;
     const modeChanged = settings.mode !== lastUsedModeRef.current;
     const keyChanged = settings.apiKey !== lastUsedKeyRef.current;
 
     const needsRefetch = isExpired || 
-                          (settings.mode === 'live' && isSimulated) || 
                           (settings.mode === 'live' && keyChanged) || 
                           modeChanged;
 
