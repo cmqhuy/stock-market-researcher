@@ -28,18 +28,43 @@ async function generateContentWithRetry(
   model: any,
   prompt: string,
   maxRetries = 3,
-  initialDelayMs = 2000
+  initialDelayMs = 2000,
+  signal?: AbortSignal
 ): Promise<any> {
   let delay = initialDelayMs;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await model.generateContent(prompt);
+      if (signal?.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
+      return await model.generateContent(prompt, { signal });
     } catch (error: any) {
+      if (error?.name === 'AbortError' || (error instanceof DOMException && error.name === 'AbortError')) {
+        throw error;
+      }
       const errorStr = String(error);
       const isRateLimit = errorStr.includes('429') || error?.status === 429 || errorStr.toLowerCase().includes('quota');
       if (isRateLimit && attempt < maxRetries) {
         console.warn(`Gemini API rate limited (429). Retrying in ${delay}ms (Attempt ${attempt}/${maxRetries})...`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        if (signal) {
+          await new Promise<void>((resolve, reject) => {
+            if (signal.aborted) {
+              reject(new DOMException('Aborted', 'AbortError'));
+              return;
+            }
+            const timer = setTimeout(() => {
+              signal.removeEventListener('abort', abortHandler);
+              resolve();
+            }, delay);
+            const abortHandler = () => {
+              clearTimeout(timer);
+              reject(new DOMException('Aborted', 'AbortError'));
+            };
+            signal.addEventListener('abort', abortHandler);
+          });
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
         delay *= 2; // exponential backoff
       } else {
         throw error;
@@ -48,38 +73,39 @@ async function generateContentWithRetry(
   }
 }
 
-type PendingChangeListener = (count: number) => void;
+type PendingChangeListener = (pendingList: string[]) => void;
 
 export class AIService implements IAIService {
-  private static pendingCount = 0;
+  private static pendingRequests: string[] = [];
   private static listeners = new Set<PendingChangeListener>();
 
-  static getPendingCount(): number {
-    return this.pendingCount;
+  static getPendingRequests(): string[] {
+    return this.pendingRequests;
   }
 
   static subscribe(listener: PendingChangeListener): () => void {
     this.listeners.add(listener);
-    listener(this.pendingCount);
+    listener(this.pendingRequests);
     return () => {
       this.listeners.delete(listener);
     };
   }
 
-  private static increment() {
-    this.pendingCount++;
-    this.listeners.forEach(l => l(this.pendingCount));
+  private static addPending(label: string) {
+    this.pendingRequests.push(label);
+    this.listeners.forEach(l => l([...this.pendingRequests]));
   }
 
-  private static decrement() {
-    this.pendingCount = Math.max(0, this.pendingCount - 1);
-    this.listeners.forEach(l => l(this.pendingCount));
+  private static removePending(label: string) {
+    this.pendingRequests = this.pendingRequests.filter(r => r !== label);
+    this.listeners.forEach(l => l([...this.pendingRequests]));
   }
 
   async analyzeNewsAndPredict(
     apiKey: string,
     articles: NewsArticle[],
-    tickerContext?: { ticker: string; name: string }
+    tickerContext?: { ticker: string; name: string },
+    signal?: AbortSignal
   ): Promise<{
     newsAnalyses: Record<string, ArticleAnalysis>;
     prediction: Prediction14Day;
@@ -87,14 +113,14 @@ export class AIService implements IAIService {
   }> {
     const targetLabel = tickerContext
       ? `${tickerContext.name} (${tickerContext.ticker.toUpperCase()})`
-      : 'The Broader US Stock Market (S&P 500 / SPY)';
+      : 'Global Market Overview';
 
     const prompt = buildRoundtablePrompt(articles, tickerContext);
 
     try {
-      AIService.increment();
+      AIService.addPending(targetLabel);
       const model = getGeminiModel(apiKey, true); // Enable Google Search grounding
-      const result = await generateContentWithRetry(model, prompt);
+      const result = await generateContentWithRetry(model, prompt, 3, 2000, signal);
       const textResponse = result.response.text();
 
       if (!textResponse) {
@@ -275,7 +301,7 @@ export class AIService implements IAIService {
       console.error(`Gemini consolidated analysis failed for ${targetLabel}:`, error);
       throw error;
     } finally {
-      AIService.decrement();
+      AIService.removePending(targetLabel);
     }
   }
 }

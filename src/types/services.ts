@@ -13,7 +13,8 @@ export interface IAIService {
   analyzeNewsAndPredict(
     apiKey: string,
     articles: NewsArticle[],
-    tickerContext?: { ticker: string; name: string }
+    tickerContext?: { ticker: string; name: string },
+    signal?: AbortSignal
   ): Promise<{
     newsAnalyses: Record<string, ArticleAnalysis>;
     prediction: Prediction14Day;

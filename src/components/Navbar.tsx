@@ -1,14 +1,16 @@
-import React from 'react';
-import { TrendingUp, Settings, ShieldAlert } from 'lucide-react';
+import React, { useState } from 'react';
+import { TrendingUp, Settings, ShieldAlert, RefreshCw } from 'lucide-react';
 import type { AppSettings } from '../types';
 
 interface NavbarProps {
   settings: AppSettings;
   onOpenSettings: () => void;
-  pendingRequests?: number;
+  pendingRequests?: string[];
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendingRequests = 0 }) => {
+export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendingRequests = [] }) => {
+  const [isPendingListOpen, setIsPendingListOpen] = useState(false);
+  
   const currentDateStr = new Date().toLocaleDateString('en-US', {
     weekday: 'short',
     year: 'numeric',
@@ -37,24 +39,60 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendin
               <span className="status-dot"></span>
               Live AI Mode
             </div>
-            {pendingRequests > 0 && (
-              <div 
-                className="status-badge" 
-                style={{ 
-                  background: 'rgba(99, 102, 241, 0.12)', 
-                  color: 'var(--primary)', 
-                  borderColor: 'rgba(99, 102, 241, 0.25)', 
-                  fontSize: '0.75rem', 
-                  padding: '0.25rem 0.5rem', 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '0.35rem',
-                  animation: 'pulse-glow 2s infinite ease-in-out'
-                }}
-                title={`${pendingRequests} active request(s) currently calling Gemini API`}
-              >
-                <span className="status-dot" style={{ backgroundColor: 'var(--primary)', boxShadow: '0 0 6px var(--primary)' }}></span>
-                {pendingRequests} Gemini Request{pendingRequests > 1 ? 's' : ''}
+            {pendingRequests.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                <div 
+                  className="status-badge" 
+                  onClick={() => setIsPendingListOpen(!isPendingListOpen)}
+                  style={{ 
+                    background: 'rgba(99, 102, 241, 0.12)', 
+                    color: 'var(--primary)', 
+                    borderColor: 'rgba(99, 102, 241, 0.25)', 
+                    fontSize: '0.75rem', 
+                    padding: '0.25rem 0.5rem', 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '0.35rem',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    animation: 'pulse-glow 2s infinite ease-in-out'
+                  }}
+                  title="Click to view pending Gemini API queries"
+                >
+                  <span className="status-dot animate-pulse" style={{ backgroundColor: 'var(--primary)', boxShadow: '0 0 6px var(--primary)' }}></span>
+                  {pendingRequests.length} Gemini Request{pendingRequests.length > 1 ? 's' : ''}
+                </div>
+
+                {isPendingListOpen && (
+                  <div 
+                    className="glass-panel" 
+                    style={{ 
+                      position: 'absolute', 
+                      top: 'calc(100% + 0.5rem)', 
+                      right: 0, 
+                      zIndex: 1000, 
+                      minWidth: '220px', 
+                      padding: '0.75rem', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '0.5rem',
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)'
+                    }}
+                  >
+                    <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.35rem', fontWeight: 600 }}>
+                      Pending API Queries
+                    </div>
+                    {pendingRequests.map((req, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '160px' }}>
+                          {req}
+                        </span>
+                        <RefreshCw size={11} className="animate-spin" style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -47,21 +47,40 @@ export function useStockAnalysis(
   const lastUsedModeRef = useRef(settings.mode);
   const lastSelectedTickerRef = useRef(selectedTicker);
   const inFlightRef = useRef<Record<string, boolean>>({});
+  const abortControllersRef = useRef<Record<string, AbortController>>({});
 
   // Sync stock analyses to localStorage
   useEffect(() => {
     localStorage.setItem('omega_stock_analyses', JSON.stringify(stockAnalyses));
   }, [stockAnalyses]);
 
+  // Clean up/abort all on settings change or unmount
+  useEffect(() => {
+    return () => {
+      Object.values(abortControllersRef.current).forEach((c) => c.abort());
+      abortControllersRef.current = {};
+    };
+  }, [settings.apiKey, settings.mode]);
+
   const runStockAnalysis = useCallback(async (ticker: string, currentSettings: AppSettings) => {
     const cleanTicker = ticker.toUpperCase().trim();
     if (inFlightRef.current[cleanTicker]) return;
+
+    // Abort any existing in-flight stock analysis request for this ticker before starting a new one
+    if (abortControllersRef.current[cleanTicker]) {
+      abortControllersRef.current[cleanTicker].abort();
+      delete abortControllersRef.current[cleanTicker];
+    }
+
     inFlightRef.current[cleanTicker] = true;
+    setIsLoadingStock(true);
+
+    const controller = new AbortController();
+    abortControllersRef.current[cleanTicker] = controller;
 
     const stockInfo = watchlist.find((s) => s.ticker === cleanTicker) || MOCK_TICKERS[cleanTicker];
     const name = stockInfo?.name || `${cleanTicker} Inc.`;
 
-    setIsLoadingStock(true);
     try {
       // ALWAYS fetch real stock news and latest price/change in parallel
       let activeArticles: NewsArticle[] = [];
@@ -77,10 +96,9 @@ export function useStockAnalysis(
         console.warn(`Failed to fetch live stock data for ${cleanTicker}, using local mock fallback:`, fetchError);
       }
 
-      // Verify user is still looking at this stock after the async news/quote fetch
-      if (cleanTicker !== lastSelectedTickerRef.current) {
-        console.log(`User navigated away from ${cleanTicker} during fetch. Aborting.`);
-        return;
+      // Check if aborted before API call
+      if (controller.signal.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
       }
 
       const nameToUse = quote?.name || name;
@@ -98,13 +116,13 @@ export function useStockAnalysis(
         const { newsAnalyses, prediction, groundingArticles } = await aiService.analyzeNewsAndPredict(
           currentSettings.apiKey!,
           finalArticles,
-          { ticker: cleanTicker, name: nameToUse }
+          { ticker: cleanTicker, name: nameToUse },
+          controller.signal
         );
 
-        // Verify user is still looking at this stock after the async Gemini call
-        if (cleanTicker !== lastSelectedTickerRef.current) {
-          console.log(`User navigated away from ${cleanTicker} during Gemini call. Aborting state update.`);
-          return;
+        // Check if aborted after API call
+        if (controller.signal.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
         }
 
         // De-duplicate and merge grounding articles from Gemini search
@@ -185,7 +203,12 @@ export function useStockAnalysis(
           )
         );
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError' || (error instanceof DOMException && error.name === 'AbortError')) {
+        console.log(`Stock analysis for ${cleanTicker} was aborted.`);
+        return;
+      }
+
       console.error(`Stock analysis failed for ${cleanTicker}:`, error);
 
       // Verify user is still looking at this stock before triggering error dialog or fallback updates
@@ -217,7 +240,7 @@ export function useStockAnalysis(
         ...mockAnalysis,
         newsAnalyses: {}, // Empty in Demo Mode / Error fallback
         lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
-        timestamp: 0, // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
+        timestamp: Date.now(), // Store fallback with current timestamp so it does not auto-retry immediately
         isSimulated: true
       };
       
@@ -239,6 +262,9 @@ export function useStockAnalysis(
       );
     } finally {
       inFlightRef.current[cleanTicker] = false;
+      if (abortControllersRef.current[cleanTicker] === controller) {
+        delete abortControllersRef.current[cleanTicker];
+      }
       if (cleanTicker === lastSelectedTickerRef.current) {
         setIsLoadingStock(false);
       }
@@ -266,6 +292,7 @@ export function useStockAnalysis(
         runStockAnalysis(selectedTicker, settings);
       } else if (tickerChanged) {
         lastSelectedTickerRef.current = selectedTicker;
+        setIsLoadingStock(false);
       }
     }
   }, [selectedTicker, settings, runStockAnalysis]);

@@ -35,16 +35,37 @@ export function useMarketAnalysis(
   const lastUsedKeyRef = useRef(settings.apiKey);
   const lastUsedModeRef = useRef(settings.mode);
   const inFlightRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isActiveRef = useRef(isActive);
 
   // Sync market state to localStorage
   useEffect(() => {
     localStorage.setItem('omega_market_analysis', JSON.stringify(marketState));
   }, [marketState]);
 
+  // Keep isActiveRef up to date
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
+
+  // Clean up/abort on settings change or unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, [settings.apiKey, settings.mode]);
+
   const runMarketAnalysis = useCallback(async (currentSettings: AppSettings) => {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     setIsLoadingMarket(true);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       // ALWAYS fetch real market news headlines first
       let activeArticles: NewsArticle[] = [];
@@ -53,6 +74,11 @@ export function useMarketAnalysis(
         activeArticles = articles.slice(0, 10);
       } catch (newsError) {
         console.warn('Failed to fetch live market news, using local mock fallback:', newsError);
+      }
+
+      // Check if aborted before long-running API call
+      if (controller.signal.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
       }
 
       const isLive = currentSettings.mode === 'live' && !!currentSettings.apiKey;
@@ -67,8 +93,15 @@ export function useMarketAnalysis(
         // Run consolidated article analysis and 14-day synthesis in ONE single Gemini API call
         const { newsAnalyses, prediction, groundingArticles } = await aiService.analyzeNewsAndPredict(
           currentSettings.apiKey!,
-          activeArticles
+          activeArticles,
+          undefined,
+          controller.signal
         );
+
+        // Check if aborted after long-running API call
+        if (controller.signal.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
+        }
 
         // De-duplicate and merge grounding articles from Gemini search
         const combinedArticles = [...activeArticles];
@@ -101,13 +134,20 @@ export function useMarketAnalysis(
           isSimulated: true
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError' || (error instanceof DOMException && error.name === 'AbortError')) {
+        console.log('Market analysis request was aborted.');
+        return;
+      }
+
       console.error('Market analysis failed:', error);
-      triggerError(
-        'Market Analysis Failed',
-        error,
-        'Failed to execute Live Market Analysis. The app has fallen back to simulated data. Please verify your API key and connection.'
-      );
+      if (isActiveRef.current) {
+        triggerError(
+          'Market Analysis Failed',
+          error,
+          'Failed to execute Live Market Analysis. The app has fallen back to simulated data. Please verify your API key and connection.'
+        );
+      }
       
       // Fetch latest news anyway so we show live news even in error fallback
       let fallbackNews: NewsArticle[] = [];
@@ -122,10 +162,13 @@ export function useMarketAnalysis(
         news: mockMarket.news,
         newsAnalyses: {}, // Empty in Demo Mode / Error fallback
         lastUpdated: new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }),
-        timestamp: 0, // Store fallback with timestamp=0 so it's always treated as expired and re-fetched next time
+        timestamp: Date.now(), // Store fallback with current timestamp so it does not auto-retry immediately
         isSimulated: true
       });
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setIsLoadingMarket(false);
       inFlightRef.current = false;
     }
@@ -147,6 +190,8 @@ export function useMarketAnalysis(
       lastUsedKeyRef.current = settings.apiKey;
       lastUsedModeRef.current = settings.mode;
       runMarketAnalysis(settings);
+    } else {
+      setIsLoadingMarket(false);
     }
   }, [settings, runMarketAnalysis, isActive]);
 
