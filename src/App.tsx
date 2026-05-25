@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Activity } from 'lucide-react';
+import { Activity, AlertTriangle } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { SettingsPanel } from './components/SettingsPanel';
 import { WatchlistPanel } from './components/WatchlistPanel';
@@ -37,6 +37,7 @@ export function App() {
   const [isLoadingMarket, setIsLoadingMarket] = useState<boolean>(false);
   const [isLoadingStock, setIsLoadingStock] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<{ title: string; message: string; details?: string } | null>(null);
 
   // Sync watchlist to localstorage
   useEffect(() => {
@@ -101,7 +102,11 @@ export function App() {
       }
     } catch (error) {
       console.error('Market analysis failed:', error);
-      alert('Failed to execute Live Market Analysis. Falling back to simulated data. Please check your Gemini API key.');
+      setErrorMessage({
+        title: 'Market Analysis Failed',
+        message: 'Failed to execute Live Market Analysis. The app has fallen back to simulated data. Please verify your API key and connection.',
+        details: error instanceof Error ? error.message : String(error)
+      });
       setMarketState(generateMockMarketAnalysis());
     } finally {
       setIsLoadingMarket(false);
@@ -195,7 +200,11 @@ export function App() {
       }
     } catch (error) {
       console.error(`Stock analysis failed for ${cleanTicker}:`, error);
-      alert(`Failed to analyze ${cleanTicker} in Live Mode. Falling back to simulated data. Please check your Gemini API key.`);
+      setErrorMessage({
+        title: `Analysis Failed: ${cleanTicker}`,
+        message: `Failed to analyze ${cleanTicker} in Live Mode. The app has fallen back to simulated data. Please verify your API key and connection.`,
+        details: error instanceof Error ? error.message : String(error)
+      });
       
       const mockAnalysis = generateMockStockAnalysis(cleanTicker);
       setStockAnalyses((prev) => ({ ...prev, [cleanTicker]: mockAnalysis }));
@@ -318,6 +327,76 @@ export function App() {
           onSaveSettings={handleSaveSettingsAndTrigger}
           onClose={() => setIsSettingsOpen(false)}
         />
+      )}
+
+      {errorMessage && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="glass-panel modal-content" style={{ maxWidth: '420px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                color: 'var(--down-color)',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <AlertTriangle size={20} />
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-main)' }}>
+                {errorMessage.title}
+              </h3>
+            </div>
+            
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: '1.5', margin: '0.5rem 0' }}>
+              {errorMessage.message}
+            </p>
+
+            {errorMessage.details && (
+              <div style={{
+                background: 'rgba(7, 10, 19, 0.6)',
+                border: '1px solid rgba(255,255,255,0.04)',
+                borderRadius: '8px',
+                padding: '0.75rem',
+                fontSize: '0.78rem',
+                fontFamily: 'monospace',
+                color: '#ef4444',
+                maxHeight: '120px',
+                overflowY: 'auto',
+                whiteSpace: 'pre-wrap',
+                marginTop: '0.5rem',
+                wordBreak: 'break-all'
+              }}>
+                <strong>Details:</strong> {errorMessage.details}
+              </div>
+            )}
+
+            <button
+              className="btn-primary"
+              onClick={() => setErrorMessage(null)}
+              style={{
+                marginTop: '1.25rem',
+                width: '100%',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: 'var(--down-color)'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                e.currentTarget.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.15)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
