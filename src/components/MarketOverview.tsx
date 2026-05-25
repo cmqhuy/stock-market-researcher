@@ -108,7 +108,12 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
           <div className="forecast-main-stance">
             <span className="forecast-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
               14-Day Market Projection
-              {isLoading && <span className="status-dot" style={{ backgroundColor: 'var(--primary)', position: 'static', transform: 'none', display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%' }} />}
+              {isLoading && (
+                <span className="news-count-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary)', fontSize: '0.65rem', textTransform: 'none', padding: '0.1rem 0.4rem', marginLeft: '0.5rem' }}>
+                  <RefreshCw size={10} className="animate-spin" />
+                  Updating...
+                </span>
+              )}
             </span>
             <span className={`forecast-value ${stance}`}>
               {stance.toUpperCase()}
@@ -161,7 +166,15 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
       {/* Market Sentiment Gauge on a separate row */}
       <div className="glass-panel" style={{ padding: '1.25rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2rem', flexWrap: 'wrap', marginBottom: '1.5rem', opacity: isLoading ? 0.75 : 1, transition: 'opacity 0.2s ease' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-          <span className="forecast-title" style={{ fontSize: '0.95rem', letterSpacing: '0.05em', margin: 0 }}>Market Sentiment Consensus</span>
+          <span className="forecast-title" style={{ fontSize: '0.95rem', letterSpacing: '0.05em', margin: 0, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            Market Sentiment Consensus
+            {isLoading && (
+              <span className="news-count-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary)', fontSize: '0.65rem', textTransform: 'none', padding: '0.1rem 0.4rem', marginLeft: '0.5rem' }}>
+                <RefreshCw size={10} className="animate-spin" />
+                Updating...
+              </span>
+            )}
+          </span>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, maxWidth: '480px', lineHeight: 1.4 }}>
             Consolidated market sentiment computed dynamically by averaging the directional biases and confidence levels of the expert panel across all premium financial news sources.
           </p>

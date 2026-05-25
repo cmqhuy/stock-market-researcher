@@ -115,7 +115,12 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
           <div className="forecast-main-stance">
             <span className="forecast-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
               14-Day Stock Projection
-              {isLoading && <span className="status-dot" style={{ backgroundColor: 'var(--primary)', position: 'static', transform: 'none', display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%' }} />}
+              {isLoading && (
+                <span className="news-count-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary)', fontSize: '0.65rem', textTransform: 'none', padding: '0.1rem 0.4rem', marginLeft: '0.5rem' }}>
+                  <RefreshCw size={10} className="animate-spin" />
+                  Updating...
+                </span>
+              )}
             </span>
             <span className={`forecast-value ${stance}`}>
               {stance.toUpperCase()}
