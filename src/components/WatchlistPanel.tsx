@@ -25,6 +25,8 @@ export const WatchlistPanel: React.FC<WatchlistPanelProps> = ({
 }) => {
   const [newTicker, setNewTicker] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null);
   const [tooltip, setTooltip] = useState<{
     price: number;
     date: string;
@@ -62,21 +64,57 @@ export const WatchlistPanel: React.FC<WatchlistPanelProps> = ({
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relativeY = e.clientY - rect.top;
+    const position = relativeY < rect.height / 2 ? 'above' : 'below';
+
+    setDragOverIndex(index);
+    setDropPosition(position);
   };
 
-  const handleDrop = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === index || !onReorderWatchlist) return;
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+    setDropPosition(null);
+  };
 
-    const reordered = [...stocks];
-    const item = reordered[draggedIndex];
-    reordered.splice(draggedIndex, 1);
-    reordered.splice(index, 0, item);
-
-    onReorderWatchlist(reordered);
+  const handleDragEnd = () => {
     setDraggedIndex(null);
+    setDragOverIndex(null);
+    setDropPosition(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || !onReorderWatchlist) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relativeY = e.clientY - rect.top;
+    const position = relativeY < rect.height / 2 ? 'above' : 'below';
+
+    let insertIndex = targetIndex;
+    if (position === 'below') {
+      insertIndex = targetIndex + 1;
+    }
+
+    if (draggedIndex < insertIndex) {
+      insertIndex = insertIndex - 1;
+    }
+
+    if (draggedIndex !== insertIndex) {
+      const reordered = [...stocks];
+      const item = reordered[draggedIndex];
+      reordered.splice(draggedIndex, 1);
+      reordered.splice(insertIndex, 0, item);
+      onReorderWatchlist(reordered);
+    }
+
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    setDropPosition(null);
   };
 
   const renderSparkline = (
@@ -232,73 +270,88 @@ export const WatchlistPanel: React.FC<WatchlistPanelProps> = ({
             const isPositive = hasChange && stock.change > 0;
             const isNegative = hasChange && stock.change < 0;
             
+            const isDragOver = index === dragOverIndex;
+            const showIndicatorAbove = isDragOver && dropPosition === 'above';
+            const showIndicatorBelow = isDragOver && dropPosition === 'below';
+
             return (
-              <div
-                key={stock.ticker}
-                className={`watchlist-card ${isActive ? 'active' : ''} ${isDragging ? 'dragging' : ''}`}
-                onClick={() => onSelectStock(stock.ticker)}
-                draggable="true"
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, index)}
-              >
-                {/* Grab handle for drag & drop reordering */}
-                <div className="watchlist-drag-handle" title="Drag to reorder">
-                  <GripVertical size={14} />
-                </div>
+              <div key={stock.ticker} style={{ position: 'relative' }}>
+                {showIndicatorAbove && (
+                  <div className="watchlist-drop-indicator above" />
+                )}
 
-                <div className="watchlist-card-left">
-                  <span className="ticker-symbol">{stock.ticker}</span>
-                  <span className="ticker-name">{stock.name}</span>
-                </div>
+                <div
+                  className={`watchlist-card ${isActive ? 'active' : ''} ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
+                  onClick={() => onSelectStock(stock.ticker)}
+                  draggable="true"
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDragEnd={handleDragEnd}
+                  onDrop={(e) => handleDrop(e, index)}
+                >
+                  {/* Grab handle for drag & drop reordering */}
+                  <div className="watchlist-drag-handle" title="Drag to reorder">
+                    <GripVertical size={14} />
+                  </div>
 
-                {/* Micro sparkline - references the history array or mock generator */}
-                <div className="watchlist-sparkline-wrapper">
-                  {renderSparkline(stock.ticker, stock.change, stock.history, stock.historyTimestamps)}
-                </div>
+                  <div className="watchlist-card-left">
+                    <span className="ticker-symbol">{stock.ticker}</span>
+                    <span className="ticker-name">{stock.name}</span>
+                  </div>
 
-                <div className="ticker-price-container">
-                  <span className="ticker-price">${stock.price.toFixed(2)}</span>
-                  <span className={`ticker-change ${isPositive ? 'up' : isNegative ? 'down' : ''}`}>
-                    {hasChange ? (
-                      <>
-                        {stock.change > 0 ? '+' : ''}
-                        {stock.change.toFixed(2)}%
-                      </>
+                  {/* Micro sparkline - references the history array or mock generator */}
+                  <div className="watchlist-sparkline-wrapper">
+                    {renderSparkline(stock.ticker, stock.change, stock.history, stock.historyTimestamps)}
+                  </div>
+
+                  <div className="ticker-price-container">
+                    <span className="ticker-price">${stock.price.toFixed(2)}</span>
+                    <span className={`ticker-change ${isPositive ? 'up' : isNegative ? 'down' : ''}`}>
+                      {hasChange ? (
+                        <>
+                          {stock.change > 0 ? '+' : ''}
+                          {stock.change.toFixed(2)}%
+                        </>
+                      ) : (
+                        '--'
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Intraday/Daily Trend indicator */}
+                  <div 
+                    className="watchlist-trend-icon"
+                    title={
+                      isPositive ? `Upward intraday movement (+${stock.change.toFixed(2)}%)` :
+                      isNegative ? `Downward intraday movement (${stock.change.toFixed(2)}%)` :
+                      `Flat / no intraday movement`
+                    }
+                  >
+                    {isPositive ? (
+                      <TrendingUp size={14} style={{ color: 'var(--up-color)' }} />
+                    ) : isNegative ? (
+                      <TrendingDown size={14} style={{ color: 'var(--down-color)' }} />
                     ) : (
-                      '--'
+                      <Minus size={14} style={{ color: 'var(--text-dark)' }} />
                     )}
-                  </span>
+                  </div>
+
+                  <button
+                    className="btn-remove"
+                    onClick={(e) => {
+                      e.stopPropagation(); // prevent card selection
+                      onRemoveStock(stock.ticker);
+                    }}
+                    aria-label={`Remove ${stock.ticker}`}
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
 
-                {/* Intraday/Daily Trend indicator */}
-                <div 
-                  className="watchlist-trend-icon"
-                  title={
-                    isPositive ? `Upward intraday movement (+${stock.change.toFixed(2)}%)` :
-                    isNegative ? `Downward intraday movement (${stock.change.toFixed(2)}%)` :
-                    `Flat / no intraday movement`
-                  }
-                >
-                  {isPositive ? (
-                    <TrendingUp size={14} style={{ color: 'var(--up-color)' }} />
-                  ) : isNegative ? (
-                    <TrendingDown size={14} style={{ color: 'var(--down-color)' }} />
-                  ) : (
-                    <Minus size={14} style={{ color: 'var(--text-dark)' }} />
-                  )}
-                </div>
-
-                <button
-                  className="btn-remove"
-                  onClick={(e) => {
-                    e.stopPropagation(); // prevent card selection
-                    onRemoveStock(stock.ticker);
-                  }}
-                  aria-label={`Remove ${stock.ticker}`}
-                >
-                  <X size={14} />
-                </button>
+                {showIndicatorBelow && (
+                  <div className="watchlist-drop-indicator below" />
+                )}
               </div>
             );
           })
