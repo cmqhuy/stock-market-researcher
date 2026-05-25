@@ -108,7 +108,7 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
       </div>
 
       {/* Main Grid: Sentiment Dial & General news */}
-      <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: '1.5rem' }}>
+      <div className="market-main-grid">
         {/* Sentiment Gauge */}
         <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <span className="forecast-title" style={{ marginBottom: '1rem', textAlign: 'center' }}>Market Sentiment</span>
