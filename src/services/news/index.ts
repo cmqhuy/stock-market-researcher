@@ -34,7 +34,7 @@ export class NewsService implements INewsService {
       }
       
       const items = xmlDoc.getElementsByTagName("item");
-      const articles: NewsArticle[] = [];
+      const parsedArticles: Array<{ article: NewsArticle; date: Date }> = [];
       
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
@@ -46,18 +46,25 @@ export class NewsService implements INewsService {
         
         // Compute a clean ID from the title hash or link to satisfy React rendering requirements
         const articleId = link ? link : `news-${cleanTicker}-${i}`;
+        const parsedDate = new Date(pubDate);
         
-        articles.push({
-          id: articleId,
-          title: title.trim(),
-          source: source.trim(),
-          time: formatDateString(pubDate),
-          url: link.trim() || undefined,
-          summary: cleanHtmlDescription(description)
+        parsedArticles.push({
+          article: {
+            id: articleId,
+            title: title.trim(),
+            source: source.trim(),
+            time: formatDateString(pubDate),
+            url: link.trim() || undefined,
+            summary: cleanHtmlDescription(description)
+          },
+          date: isNaN(parsedDate.getTime()) ? new Date(0) : parsedDate
         });
       }
       
-      return articles;
+      // Sort from latest to oldest
+      parsedArticles.sort((a, b) => b.date.getTime() - a.date.getTime());
+      
+      return parsedArticles.map(p => p.article);
     } catch (error) {
       console.warn(`Failed to fetch RSS news for ${cleanTicker || 'MARKET'}:`, error);
       // Return empty list if RSS feed fails so we don't break the app

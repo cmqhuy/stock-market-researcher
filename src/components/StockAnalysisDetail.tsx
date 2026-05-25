@@ -18,11 +18,10 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
 }) => {
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
 
-  if (isLoading) {
-    return <LoadingPanel minHeight="450px" />;
-  }
-
   if (!stockAnalysis) {
+    if (isLoading) {
+      return <LoadingPanel minHeight="450px" />;
+    }
     return (
       <div className="glass-panel empty-state" style={{ minHeight: '450px' }}>
         <MessageSquare size={48} className="empty-state-icon" />
@@ -111,10 +110,13 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
       </div>
 
       {/* 14-Day Prediction Banner */}
-      <div className={`glass-panel forecast-banner ${stance}`}>
+      <div className={`glass-panel forecast-banner ${stance}`} style={{ opacity: isLoading ? 0.75 : 1, transition: 'opacity 0.2s ease' }}>
         <div className="forecast-header">
           <div className="forecast-main-stance">
-            <span className="forecast-title">14-Day Stock Projection</span>
+            <span className="forecast-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              14-Day Stock Projection
+              {isLoading && <span className="status-dot" style={{ backgroundColor: 'var(--primary)', position: 'static', transform: 'none', display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%' }} />}
+            </span>
             <span className={`forecast-value ${stance}`}>
               {stance.toUpperCase()}
             </span>
@@ -164,13 +166,20 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
       </div>
 
       {/* Stock news list with expert accordion debates */}
-      <div className="glass-panel" style={{ padding: '1.25rem' }}>
+      <div className="glass-panel" style={{ padding: '1.25rem', opacity: isLoading ? 0.75 : 1, transition: 'opacity 0.2s ease' }}>
         <div className="news-header-section">
           <h2 className="panel-title" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 0 }}>
             <MessageSquare size={18} className="text-primary" style={{ color: 'var(--primary)' }} />
             Asset Headlines & Roundtable Debates
           </h2>
-          <span className="news-count-badge">{news.length} News Articles</span>
+          {isLoading ? (
+            <span className="news-count-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary)' }}>
+              <RefreshCw size={12} className="animate-spin" />
+              Updating...
+            </span>
+          ) : (
+            <span className="news-count-badge">{news.length} News Articles</span>
+          )}
         </div>
 
         <div className="news-list" style={{ marginTop: '1rem' }}>
