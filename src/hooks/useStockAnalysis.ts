@@ -233,14 +233,15 @@ export function useStockAnalysis(
       const needsRefetch = isExpired || 
                             (settings.mode === 'live' && isSimulated) || 
                             (settings.mode === 'live' && keyChanged) || 
-                            modeChanged || 
-                            tickerChanged;
+                            modeChanged;
 
       if (needsRefetch) {
         lastUsedKeyRef.current = settings.apiKey;
         lastUsedModeRef.current = settings.mode;
         lastSelectedTickerRef.current = selectedTicker;
         runStockAnalysis(selectedTicker, settings);
+      } else if (tickerChanged) {
+        lastSelectedTickerRef.current = selectedTicker;
       }
     }
   }, [selectedTicker, settings, runStockAnalysis]);

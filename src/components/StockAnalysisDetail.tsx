@@ -94,9 +94,13 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
               ({ticker})
             </span>
           </h2>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            As of {lastUpdated}
-          </span>
+          {lastUpdated && (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {(!isLiveMode || (stockAnalysis && stockAnalysis.isSimulated)) 
+                ? `Simulated Data (as of ${lastUpdated})` 
+                : `As of ${lastUpdated}`}
+            </span>
+          )}
         </div>
 
         <button

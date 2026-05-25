@@ -88,7 +88,9 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 800 }}>Global Market Overview</h2>
           {marketState.lastUpdated && (
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              As of {marketState.lastUpdated}
+              {(!isLiveMode || marketState.isSimulated) 
+                ? `Simulated Data (as of ${marketState.lastUpdated})` 
+                : `As of ${marketState.lastUpdated}`}
             </span>
           )}
         </div>
