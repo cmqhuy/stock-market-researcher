@@ -77,6 +77,12 @@ export function useStockAnalysis(
         console.warn(`Failed to fetch live stock data for ${cleanTicker}, using local mock fallback:`, fetchError);
       }
 
+      // Verify user is still looking at this stock after the async news/quote fetch
+      if (cleanTicker !== lastSelectedTickerRef.current) {
+        console.log(`User navigated away from ${cleanTicker} during fetch. Aborting.`);
+        return;
+      }
+
       const nameToUse = quote?.name || name;
       const isLive = currentSettings.mode === 'live' && !!currentSettings.apiKey;
 
@@ -94,6 +100,12 @@ export function useStockAnalysis(
           finalArticles,
           { ticker: cleanTicker, name: nameToUse }
         );
+
+        // Verify user is still looking at this stock after the async Gemini call
+        if (cleanTicker !== lastSelectedTickerRef.current) {
+          console.log(`User navigated away from ${cleanTicker} during Gemini call. Aborting state update.`);
+          return;
+        }
 
         // De-duplicate and merge grounding articles from Gemini search
         const combinedArticles = [...finalArticles];
@@ -140,6 +152,12 @@ export function useStockAnalysis(
         // Demo Mode (or Live Mode with missing API Key)
         // Generate mock analysis based on real articles (if any)
         const mockAnalysis = generateMockStockAnalysis(cleanTicker, activeArticles.length > 0 ? activeArticles : undefined);
+        
+        // Verify user is still looking at this stock before writing simulated data to state
+        if (cleanTicker !== lastSelectedTickerRef.current) {
+          return;
+        }
+
         const finalAnalysis: StockAnalysis = {
           ...mockAnalysis,
           newsAnalyses: {}, // AI analysis is disabled in Demo Mode
@@ -169,6 +187,12 @@ export function useStockAnalysis(
       }
     } catch (error) {
       console.error(`Stock analysis failed for ${cleanTicker}:`, error);
+
+      // Verify user is still looking at this stock before triggering error dialog or fallback updates
+      if (cleanTicker !== lastSelectedTickerRef.current) {
+        return;
+      }
+
       triggerError(
         `Analysis Failed: ${cleanTicker}`,
         error,
@@ -214,8 +238,10 @@ export function useStockAnalysis(
         )
       );
     } finally {
-      setIsLoadingStock(false);
       inFlightRef.current[cleanTicker] = false;
+      if (cleanTicker === lastSelectedTickerRef.current) {
+        setIsLoadingStock(false);
+      }
     }
   }, [watchlist, setWatchlist, triggerError]);
 
