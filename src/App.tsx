@@ -60,12 +60,14 @@ export function App() {
         const articles = await fetchLatestNews();
         
         // Analyze each news article in parallel using Gemini
+        const errors: any[] = [];
         const analysisPromises = articles.slice(0, 5).map(async (article) => {
           try {
             const analysis = await analyzeNewsArticle(currentSettings.apiKey, article);
             return { article, analysis };
           } catch (err) {
             console.warn(`Failed to analyze market article: "${article.title}"`, err);
+            errors.push(err);
             return null;
           }
         });
@@ -74,7 +76,8 @@ export function App() {
         const articlesWithAnalysis = results.filter((r): r is { article: typeof articles[0]; analysis: any } => r !== null);
 
         if (articlesWithAnalysis.length === 0) {
-          throw new Error('All market article analyses failed.');
+          const firstError = errors[0];
+          throw firstError || new Error('All market article analyses failed.');
         }
 
         // Synthesize 14-day market prediction
@@ -126,12 +129,14 @@ export function App() {
         const articles = await fetchLatestNews(cleanTicker);
 
         // Analyze at least 5 articles in parallel using Gemini
+        const errors: any[] = [];
         const analysisPromises = articles.slice(0, 6).map(async (article) => {
           try {
             const analysis = await analyzeNewsArticle(currentSettings.apiKey, article, { ticker: cleanTicker, name });
             return { article, analysis };
           } catch (err) {
             console.warn(`Failed to analyze article: "${article.title}"`, err);
+            errors.push(err);
             return null;
           }
         });
@@ -140,7 +145,8 @@ export function App() {
         const articlesWithAnalysis = results.filter((r): r is { article: typeof articles[0]; analysis: any } => r !== null);
 
         if (articlesWithAnalysis.length === 0) {
-          throw new Error(`All analyses failed for ticker ${cleanTicker}`);
+          const firstError = errors[0];
+          throw firstError || new Error(`All analyses failed for ticker ${cleanTicker}`);
         }
 
         // Synthesize 14-day stock prediction
