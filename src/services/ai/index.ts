@@ -252,12 +252,28 @@ export class AIService implements IAIService {
         throw new Error('Empty response from Gemini API');
       }
 
-      // Clean up text response if markdown code blocks wrap the JSON
+      // Clean up text response using regex to extract the JSON block,
+      // discarding any conversational text before/after code blocks.
       let jsonString = textResponse.trim();
-      if (jsonString.startsWith('```json')) {
-        jsonString = jsonString.substring(7, jsonString.length - 3).trim();
-      } else if (jsonString.startsWith('```')) {
-        jsonString = jsonString.substring(3, jsonString.length - 3).trim();
+      
+      const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/;
+      const match = jsonString.match(jsonBlockRegex);
+      
+      if (match && match[1]) {
+        jsonString = match[1].trim();
+      } else {
+        const genericBlockRegex = /```\s*([\s\S]*?)\s*```/;
+        const genericMatch = jsonString.match(genericBlockRegex);
+        if (genericMatch && genericMatch[1]) {
+          jsonString = genericMatch[1].trim();
+        } else {
+          // If no markdown blocks exist, extract everything from the first '{' to the last '}'
+          const firstBrace = jsonString.indexOf('{');
+          const lastBrace = jsonString.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            jsonString = jsonString.substring(firstBrace, lastBrace + 1).trim();
+          }
+        }
       }
 
       const parsedRaw: any = JSON.parse(jsonString);
