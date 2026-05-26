@@ -62,7 +62,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
           <div className="settings-group">
             <label className="settings-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>Gemini API Key</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                Gemini API Keys
+                {mode === 'live' && (apiKey.split(/[\s,\n\r]+/).map(k => k.trim()).filter(Boolean).length > 0) && (
+                  <span className="badge-up" style={{ fontSize: '0.68rem', padding: '0.1rem 0.4rem', borderRadius: '4px', textTransform: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                    {apiKey.split(/[\s,\n\r]+/).map(k => k.trim()).filter(Boolean).length} key{apiKey.split(/[\s,\n\r]+/).map(k => k.trim()).filter(Boolean).length !== 1 ? 's' : ''} loaded
+                  </span>
+                )}
+              </span>
               <button
                 type="button"
                 onClick={() => setShowKey(!showKey)}
@@ -72,15 +79,23 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 {showKey ? 'Hide' : 'Show'}
               </button>
             </label>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Key size={16} style={{ position: 'absolute', left: '12px', color: 'var(--text-dark)' }} />
-              <input
-                type={showKey ? 'text' : 'password'}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start' }}>
+              <Key size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: 'var(--text-dark)' }} />
+              <textarea
                 className="form-input"
-                placeholder="AIzaSy..."
+                placeholder="Paste one or more Gemini API keys (one per line or comma-separated)"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                style={{ paddingLeft: '2.5rem' }}
+                style={{ 
+                  paddingLeft: '2.5rem',
+                  paddingTop: '0.75rem',
+                  minHeight: '85px',
+                  resize: 'vertical',
+                  fontFamily: 'monospace',
+                  fontSize: '0.8rem',
+                  lineHeight: '1.4',
+                  WebkitTextSecurity: showKey ? 'none' : 'disc'
+                } as any}
                 disabled={mode === 'demo'}
               />
             </div>
@@ -89,6 +104,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 API key is not required in Demo Simulation Mode.
               </span>
             ) : (
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-dark)', marginTop: '0.1rem', marginBottom: '0.25rem', display: 'block' }}>
+                Supports multi-key pooling. Paste multiple keys to rotate requests and bypass rate limits.
+              </span>
+            )}
+            {mode !== 'demo' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
                 <div className="key-guide-box" style={{
                   background: 'rgba(99, 102, 241, 0.04)',

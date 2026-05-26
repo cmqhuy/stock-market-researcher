@@ -29,6 +29,8 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendin
   const [copied, setCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const hasApiKeys = !!settings.apiKey && settings.apiKey.split(/[\s,\n\r]+/).map(k => k.trim()).filter(Boolean).length > 0;
+
   // Close on outside click
   useEffect(() => {
     if (!isPendingListOpen) return;
@@ -277,7 +279,7 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendin
           </div>
         )}
 
-        {settings.mode === 'live' && !settings.apiKey && (
+        {settings.mode === 'live' && !hasApiKeys && (
           <div className="badge-down" style={{ padding: '0.25rem 0.5rem', gap: '0.25rem', fontSize: '0.75rem' }}>
             <ShieldAlert size={14} />
             Key Missing

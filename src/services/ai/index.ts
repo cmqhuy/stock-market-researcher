@@ -27,7 +27,7 @@ function getGeminiModel(apiKey: string, enableSearch = false) {
  * Calls GeminiLogger.retry(logId) on each retry attempt.
  */
 async function generateContentWithRetry(
-  model: any,
+  apiKeys: string[],
   prompt: string,
   logId: string,
   maxRetries = 3,
@@ -35,20 +35,28 @@ async function generateContentWithRetry(
   signal?: AbortSignal
 ): Promise<any> {
   let delay = initialDelayMs;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  const attemptsLimit = Math.max(maxRetries, apiKeys.length);
+  
+  for (let attempt = 1; attempt <= attemptsLimit; attempt++) {
+    const keyIndex = AIService.getNextKeyIndex() % apiKeys.length;
+    const currentKey = apiKeys[keyIndex];
+    
     try {
       if (signal?.aborted) {
         throw new DOMException('Aborted', 'AbortError');
       }
-      return await model.generateContent(prompt, { signal });
+      const model = getGeminiModel(currentKey, true); // Enable Google Search grounding
+      const result = await model.generateContent(prompt, { signal });
+      return result;
     } catch (error: any) {
       if (error?.name === 'AbortError' || (error instanceof DOMException && error.name === 'AbortError')) {
         throw error;
       }
       const errorStr = String(error);
       const isRateLimit = errorStr.includes('429') || error?.status === 429 || errorStr.toLowerCase().includes('quota');
-      if (isRateLimit && attempt < maxRetries) {
-        console.warn(`Gemini API rate limited (429). Retrying in ${delay}ms (Attempt ${attempt}/${maxRetries})...`);
+      if (isRateLimit && attempt < attemptsLimit) {
+        console.warn(`Gemini API rate limited with key index ${keyIndex} (attempt ${attempt}/${attemptsLimit}). Rotating key and retrying in ${delay}ms...`);
+        AIService.rotateKey();
         GeminiLogger.retry(logId);
         if (signal) {
           await new Promise<void>((resolve, reject) => {
@@ -69,11 +77,57 @@ async function generateContentWithRetry(
         } else {
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
-        delay *= 2; // exponential backoff
+        delay *= 1.5;
       } else {
         throw error;
       }
     }
+  }
+}
+
+class RequestQueue {
+  private queue: Array<{
+    fn: () => Promise<any>;
+    resolve: (value: any) => void;
+    reject: (reason: any) => void;
+  }> = [];
+  private running = false;
+  private lastRequestTime = 0;
+  private minDelayMs = 2000; // Force 2 seconds between API calls to avoid rate limits
+
+  enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      this.queue.push({ fn, resolve, reject });
+      this.process();
+    });
+  }
+
+  private async process() {
+    if (this.running || this.queue.length === 0) return;
+    this.running = true;
+
+    while (this.queue.length > 0) {
+      const item = this.queue.shift();
+      if (!item) continue;
+
+      const now = Date.now();
+      const elapsed = now - this.lastRequestTime;
+      if (elapsed < this.minDelayMs) {
+        const waitTime = this.minDelayMs - elapsed;
+        await new Promise((r) => setTimeout(r, waitTime));
+      }
+
+      this.lastRequestTime = Date.now();
+
+      try {
+        const result = await item.fn();
+        item.resolve(result);
+      } catch (error) {
+        item.reject(error);
+      }
+    }
+
+    this.running = false;
   }
 }
 
@@ -82,6 +136,16 @@ type PendingChangeListener = (pendingList: string[]) => void;
 export class AIService implements IAIService {
   private static pendingRequests: string[] = [];
   private static listeners = new Set<PendingChangeListener>();
+  private static queue = new RequestQueue();
+  private static currentKeyIndex = 0;
+
+  static rotateKey() {
+    this.currentKeyIndex++;
+  }
+
+  static getNextKeyIndex() {
+    return this.currentKeyIndex;
+  }
 
   static getPendingRequests(): string[] {
     return this.pendingRequests;
@@ -141,8 +205,25 @@ export class AIService implements IAIService {
 
     try {
       AIService.addPending(targetLabel);
-      const model = getGeminiModel(apiKey, true); // Enable Google Search grounding
-      const result = await generateContentWithRetry(model, prompt, logId, 1, 2000, signal);
+
+      const apiKeys = apiKey.split(/[\s,\n\r]+/).map(k => k.trim()).filter(Boolean);
+      if (apiKeys.length === 0) {
+        throw new Error('No valid Gemini API key provided.');
+      }
+
+      const result = await AIService.queue.enqueue(async () => {
+        if (signal?.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
+        }
+        const res = await generateContentWithRetry(apiKeys, prompt, logId, 1, 2000, signal);
+        if (signal?.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
+        }
+        // Rotate key index for the next call
+        AIService.rotateKey();
+        return res;
+      });
+
       const textResponse = result.response.text();
 
       if (!textResponse) {
