@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, ChevronDown, Award, Lightbulb, AlertTriangle, MessageSquare, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
+import { Shield, ChevronDown, Award, Lightbulb, AlertTriangle, MessageSquare, TrendingUp, TrendingDown, Minus, RefreshCw, ExternalLink } from 'lucide-react';
 import type { StockAnalysis, ArticleAnalysis } from '../types';
 import { LoadingPanel } from './LoadingPanel';
 
@@ -268,6 +268,19 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
                   <div className="news-details-expanded">
                     {article.summary && (
                       <p className="article-summary-text">{article.summary}</p>
+                    )}
+
+                    {article.url && (
+                      <a
+                        href={article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="article-read-more"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ExternalLink size={12} />
+                        Read full article
+                      </a>
                     )}
 
                     <h4 className="expert-debate-header">
