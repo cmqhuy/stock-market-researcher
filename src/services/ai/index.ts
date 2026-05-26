@@ -162,14 +162,14 @@ export class AIService implements IAIService {
 
   static subscribe(listener: PendingChangeListener): () => void {
     this.listeners.add(listener);
-    listener({ active: this.activeRequests, queued: this.queuedRequests });
+    listener({ active: [...this.activeRequests], queued: [...this.queuedRequests] });
     return () => {
       this.listeners.delete(listener);
     };
   }
 
   private static notify() {
-    const state = { active: this.activeRequests, queued: this.queuedRequests };
+    const state = { active: [...this.activeRequests], queued: [...this.queuedRequests] };
     this.listeners.forEach(l => l(state));
   }
 
