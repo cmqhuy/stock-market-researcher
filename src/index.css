@@ -798,7 +798,7 @@ h2.panel-title {
   font-size: 0.85rem;
   line-height: 1.5;
   color: var(--text-muted);
-  margin-bottom: 0.6rem;
+  margin-bottom: 1.25rem;
   padding-left: 0.75rem;
   border-left: 2px solid var(--primary);
 }
