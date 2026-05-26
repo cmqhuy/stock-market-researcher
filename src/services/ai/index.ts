@@ -142,7 +142,7 @@ export class AIService implements IAIService {
     try {
       AIService.addPending(targetLabel);
       const model = getGeminiModel(apiKey, true); // Enable Google Search grounding
-      const result = await generateContentWithRetry(model, prompt, logId, 3, 2000, signal);
+      const result = await generateContentWithRetry(model, prompt, logId, 1, 2000, signal);
       const textResponse = result.response.text();
 
       if (!textResponse) {
