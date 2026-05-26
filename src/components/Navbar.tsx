@@ -138,24 +138,40 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendin
                 </div>
 
                 {isPendingListOpen && (
-                  <div
-                    className="glass-panel"
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 0.5rem)',
-                      right: 0,
-                      zIndex: 1000,
-                      width: '360px',
-                      padding: '0.75rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.4rem',
-                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.6), 0 8px 10px -6px rgba(0,0,0,0.5)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      maxHeight: '420px',
-                      overflowY: 'auto',
-                    }}
-                  >
+                  <>
+                    {/* Full-screen blurred backdrop */}
+                    <div
+                      style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 998,
+                        backdropFilter: 'blur(6px)',
+                        WebkitBackdropFilter: 'blur(6px)',
+                        background: 'rgba(8, 10, 20, 0.45)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                    <div
+                      className="glass-panel"
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 0.5rem)',
+                        right: 0,
+                        zIndex: 999,
+                        width: '360px',
+                        padding: '0.75rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.4rem',
+                        background: 'rgba(14, 16, 30, 0.92)',
+                        backdropFilter: 'blur(24px)',
+                        WebkitBackdropFilter: 'blur(24px)',
+                        boxShadow: '0 20px 40px -8px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.07)',
+                        border: '1px solid rgba(255, 255, 255, 0.10)',
+                        maxHeight: '420px',
+                        overflowY: 'auto',
+                      }}
+                    >
                     {/* Header row */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.4rem', marginBottom: '0.15rem' }}>
                       <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600 }}>
@@ -248,7 +264,8 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendin
                     <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '0.35rem', marginTop: '0.1rem', textAlign: 'center' }}>
                       Open DevTools console → type <code style={{ background: 'rgba(99,102,241,0.12)', padding: '0 0.25rem', borderRadius: '3px' }}>geminiLog()</code> for full log
                     </div>
-                  </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
