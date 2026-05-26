@@ -141,7 +141,7 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
 
         <div className="forecast-details">
           <div>
-            <span className="detail-list-title green">
+            <span className={`detail-list-title ${stance === 'up' ? 'green' : stance === 'down' ? 'red' : 'muted'}`}>
               <Lightbulb size={14} />
               Key Drivers
             </span>

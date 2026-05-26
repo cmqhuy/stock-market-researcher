@@ -660,6 +660,7 @@ h2.panel-title {
 
 .detail-list-title.green { color: var(--up-color); }
 .detail-list-title.red { color: var(--down-color); }
+.detail-list-title.muted { color: var(--text-muted); }
 
 .detail-list {
   list-style: none;
@@ -688,6 +689,7 @@ h2.panel-title {
 
 .detail-list-title.green + .detail-list li::before { background: var(--up-color); }
 .detail-list-title.red + .detail-list li::before { background: var(--down-color); }
+.detail-list-title.muted + .detail-list li::before { background: var(--text-muted); }
 
 /* News list & accordion */
 .news-header-section {
