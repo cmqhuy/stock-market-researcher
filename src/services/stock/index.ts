@@ -6,7 +6,7 @@ export class StockService implements IStockService {
     const cleanTicker = ticker.toUpperCase().trim();
     // Fetch 7 days of daily price data
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${cleanTicker}?interval=1d&range=7d`;
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
 
     const response = await fetch(proxyUrl);
     if (!response.ok) {

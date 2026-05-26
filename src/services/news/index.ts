@@ -14,7 +14,7 @@ export class NewsService implements INewsService {
       feedUrl = `https://finance.yahoo.com/rss/headline?s=SPY,DIA,QQQ`;
     }
     
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`;
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(feedUrl)}`;
     
     try {
       const response = await fetch(proxyUrl);
