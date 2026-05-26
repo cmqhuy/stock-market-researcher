@@ -50,7 +50,10 @@ async function fetchAndParseRss(
         }
       }
       
-      const articleId = link ? link.trim() : `news-${defaultSource}-${cleanTicker}-${i}`;
+      // Generate a clean, safe ID for JSON keys (alphanumeric and hyphens only)
+      const sourceSlug = defaultSource.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const tickerSlug = cleanTicker ? cleanTicker.toLowerCase() : 'market';
+      const articleId = `art-${sourceSlug}-${tickerSlug}-${i}`;
       const parsedDate = new Date(pubDate);
       
       parsedArticles.push({
