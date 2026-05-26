@@ -179,7 +179,7 @@ export function useMarketAnalysis(
   useEffect(() => {
     if (!isActive) return;
     const now = Date.now();
-    const isExpired = !marketState.timestamp || (now - marketState.timestamp > 60 * 60 * 1000);
+    const isExpired = !marketState.timestamp || (now - marketState.timestamp > 12 * 60 * 60 * 1000);
     const modeChanged = settings.mode !== lastUsedModeRef.current;
     const keyChanged = settings.apiKey !== lastUsedKeyRef.current;
 

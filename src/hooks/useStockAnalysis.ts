@@ -277,7 +277,7 @@ export function useStockAnalysis(
     if (selectedTicker !== 'MARKET') {
       const existing = stockAnalyses[selectedTicker];
       const now = Date.now();
-      const isExpired = !existing || !existing.timestamp || (now - existing.timestamp > 60 * 60 * 1000);
+      const isExpired = !existing || !existing.timestamp || (now - existing.timestamp > 12 * 60 * 60 * 1000);
       const modeChanged = settings.mode !== lastUsedModeRef.current;
       const keyChanged = settings.apiKey !== lastUsedKeyRef.current;
       const tickerChanged = selectedTicker !== lastSelectedTickerRef.current;
