@@ -17,7 +17,10 @@ import { useStockAnalysis } from './hooks/useStockAnalysis';
 
 export function App() {
   const { settings, saveSettings } = useAppSettings();
-  const [pendingRequests, setPendingRequests] = useState<string[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<{ active: string[]; queued: string[] }>({
+    active: [],
+    queued: []
+  });
 
   useEffect(() => {
     return AIService.subscribe(setPendingRequests);
