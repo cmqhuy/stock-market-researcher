@@ -6,7 +6,10 @@ import { GeminiLogger, type GeminiLogEntry } from '../services/ai/logger';
 interface NavbarProps {
   settings: AppSettings;
   onOpenSettings: () => void;
-  pendingRequests?: string[];
+  pendingRequests?: {
+    active: string[];
+    queued: string[];
+  };
 }
 
 const STATUS_ICON: Record<string, string> = {
@@ -22,7 +25,7 @@ const STATUS_COLOR: Record<string, string> = {
   pending: '#f59e0b',
 };
 
-export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendingRequests = [] }) => {
+export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendingRequests = { active: [], queued: [] } }) => {
   const [isPendingListOpen, setIsPendingListOpen] = useState(false);
   const [recentLog, setRecentLog] = useState<GeminiLogEntry[]>([]);
   const [sessionTotal, setSessionTotal] = useState(0);
@@ -82,7 +85,10 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendin
     });
   };
 
-  const hasPending = pendingRequests.length > 0;
+  const activeRequests = pendingRequests?.active || [];
+  const queuedRequests = pendingRequests?.queued || [];
+  const pendingCount = activeRequests.length + queuedRequests.length;
+  const hasPending = pendingCount > 0;
   const hasLog = recentLog.length > 0;
 
   return (
@@ -130,12 +136,12 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendin
                   title="Click to view Gemini API request log"
                 >
                   {hasPending ? (
-                    <span className="status-dot animate-pulse" style={{ backgroundColor: 'var(--primary)', boxShadow: '0 0 6px var(--primary)' }} />
+                    <span className="status-dot animate-pulse" style={{ backgroundColor: hasPending && activeRequests.length === 0 ? '#f59e0b' : 'var(--primary)', boxShadow: hasPending && activeRequests.length === 0 ? '0 0 6px #f59e0b' : '0 0 6px var(--primary)' }} />
                   ) : (
                     <Clock size={11} />
                   )}
                   {hasPending
-                    ? `${pendingRequests.length} Pending`
+                    ? `${pendingCount} Pending`
                     : `${sessionTotal} Session Request${sessionTotal !== 1 ? 's' : ''}`}
                 </div>
 
@@ -193,17 +199,37 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendin
                     {/* Pending section */}
                     {hasPending && (
                       <>
-                        <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#f59e0b', fontWeight: 600, marginTop: '0.1rem' }}>
-                          ⏳ Active ({pendingRequests.length})
-                        </div>
-                        {pendingRequests.map((req, idx) => (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-main)', padding: '0.2rem 0.35rem', background: 'rgba(245,158,11,0.06)', borderRadius: '5px', border: '1px solid rgba(245,158,11,0.12)' }}>
-                            <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{req}</span>
-                            <RefreshCw size={11} className="animate-spin" style={{ color: '#f59e0b', flexShrink: 0 }} />
-                          </div>
-                        ))}
+                        {activeRequests.length > 0 && (
+                          <>
+                            <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--primary)', fontWeight: 600, marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span className="status-dot animate-pulse" style={{ position: 'static', transform: 'none', display: 'inline-block', width: '6px', height: '6px', backgroundColor: 'var(--primary)' }}></span>
+                              Sending ({activeRequests.length})
+                            </div>
+                            {activeRequests.map((req, idx) => (
+                              <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-main)', padding: '0.2rem 0.35rem', background: 'rgba(99,102,241,0.06)', borderRadius: '5px', border: '1px solid rgba(99,102,241,0.12)' }}>
+                                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{req}</span>
+                                <RefreshCw size={11} className="animate-spin" style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                              </div>
+                            ))}
+                          </>
+                        )}
+
+                        {queuedRequests.length > 0 && (
+                          <>
+                            <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#f59e0b', fontWeight: 600, marginTop: activeRequests.length > 0 ? '0.4rem' : '0.15rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span className="status-dot" style={{ position: 'static', transform: 'none', display: 'inline-block', width: '6px', height: '6px', backgroundColor: '#f59e0b' }}></span>
+                              Queued ({queuedRequests.length})
+                            </div>
+                            {queuedRequests.map((req, idx) => (
+                              <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-main)', padding: '0.2rem 0.35rem', background: 'rgba(245,158,11,0.04)', borderRadius: '5px', border: '1px solid rgba(245,158,11,0.1)' }}>
+                                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{req}</span>
+                                <Clock size={11} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                              </div>
+                            ))}
+                          </>
+                        )}
                         {recentLog.filter(e => e.status !== 'pending').length > 0 && (
-                          <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '0.15rem 0' }} />
+                          <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '0.35rem 0' }} />
                         )}
                       </>
                     )}

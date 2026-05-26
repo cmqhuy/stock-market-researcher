@@ -8,11 +8,44 @@ interface ErrorState {
 }
 
 function parseRateLimitDelay(errorDetails: string): number | undefined {
-  const match = errorDetails.match(/Please retry in ([\d\.]+)s/i) || errorDetails.match(/retry in ([\d\.]+)s/i);
-  if (match && match[1]) {
-    const seconds = parseFloat(match[1]);
-    return Math.ceil(seconds);
+  // Check for various patterns indicating seconds to wait:
+  // e.g., "Please retry in 30.5s", "retry after 60s", "wait 10 seconds", "cooldown: 45s"
+  const secRegexes = [
+    /retry in ([\d\.]+)\s*(?:s|sec|second|seconds)/i,
+    /retry after ([\d\.]+)\s*(?:s|sec|second|seconds)/i,
+    /wait ([\d\.]+)\s*(?:s|sec|second|seconds)/i,
+    /delay of ([\d\.]+)\s*(?:s|sec|second|seconds)/i,
+    /cooldown\s*(?:of|for)?\s*([\d\.]+)\s*(?:s|sec|second|seconds)/i,
+  ];
+
+  for (const regex of secRegexes) {
+    const match = errorDetails.match(regex);
+    if (match && match[1]) {
+      const seconds = parseFloat(match[1]);
+      if (!isNaN(seconds)) {
+        return Math.ceil(seconds);
+      }
+    }
   }
+
+  // Also check for minutes to wait:
+  // e.g., "Please retry in 1 minute", "wait 2m"
+  const minRegexes = [
+    /retry in ([\d\.]+)\s*(?:m|min|minute|minutes)/i,
+    /retry after ([\d\.]+)\s*(?:m|min|minute|minutes)/i,
+    /wait ([\d\.]+)\s*(?:m|min|minute|minutes)/i,
+  ];
+
+  for (const regex of minRegexes) {
+    const match = errorDetails.match(regex);
+    if (match && match[1]) {
+      const minutes = parseFloat(match[1]);
+      if (!isNaN(minutes)) {
+        return Math.ceil(minutes * 60);
+      }
+    }
+  }
+
   return undefined;
 }
 
@@ -20,8 +53,28 @@ export function useErrorModal() {
   const [errorMessage, setErrorMessage] = useState<ErrorState | null>(null);
 
   const triggerError = useCallback((title: string, error: unknown, defaultMessage: string) => {
-    const errorDetails = error instanceof Error ? error.message : String(error);
-    const isRateLimit = errorDetails.includes('429') || errorDetails.toLowerCase().includes('quota') || errorDetails.toLowerCase().includes('rate limit');
+    let errorDetails = '';
+    
+    if (error instanceof Error) {
+      errorDetails = error.message;
+      if ('status' in error) {
+        errorDetails += ` [Status: ${(error as any).status}]`;
+      }
+    } else if (typeof error === 'object' && error !== null) {
+      try {
+        errorDetails = JSON.stringify(error);
+      } catch {
+        errorDetails = String(error);
+      }
+    } else {
+      errorDetails = String(error);
+    }
+
+    const isRateLimit = errorDetails.includes('429') || 
+                        errorDetails.toLowerCase().includes('quota') || 
+                        errorDetails.toLowerCase().includes('rate limit') || 
+                        errorDetails.toLowerCase().includes('resource_exhausted') ||
+                        errorDetails.toLowerCase().includes('exhausted');
     
     let message = defaultMessage;
     let retryAfterSeconds: number | undefined = undefined;

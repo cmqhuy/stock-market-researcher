@@ -131,10 +131,16 @@ class RequestQueue {
   }
 }
 
-type PendingChangeListener = (pendingList: string[]) => void;
+export interface PendingState {
+  active: string[];
+  queued: string[];
+}
+
+type PendingChangeListener = (state: PendingState) => void;
 
 export class AIService implements IAIService {
-  private static pendingRequests: string[] = [];
+  private static activeRequests: string[] = [];
+  private static queuedRequests: string[] = [];
   private static listeners = new Set<PendingChangeListener>();
   private static queue = new RequestQueue();
   private static currentKeyIndex = 0;
@@ -147,26 +153,41 @@ export class AIService implements IAIService {
     return this.currentKeyIndex;
   }
 
-  static getPendingRequests(): string[] {
-    return this.pendingRequests;
+  static getPendingState(): PendingState {
+    return {
+      active: this.activeRequests,
+      queued: this.queuedRequests
+    };
   }
 
   static subscribe(listener: PendingChangeListener): () => void {
     this.listeners.add(listener);
-    listener(this.pendingRequests);
+    listener({ active: this.activeRequests, queued: this.queuedRequests });
     return () => {
       this.listeners.delete(listener);
     };
   }
 
-  private static addPending(label: string) {
-    this.pendingRequests.push(label);
-    this.listeners.forEach(l => l([...this.pendingRequests]));
+  private static notify() {
+    const state = { active: this.activeRequests, queued: this.queuedRequests };
+    this.listeners.forEach(l => l(state));
   }
 
-  private static removePending(label: string) {
-    this.pendingRequests = this.pendingRequests.filter(r => r !== label);
-    this.listeners.forEach(l => l([...this.pendingRequests]));
+  private static addQueued(label: string) {
+    this.queuedRequests.push(label);
+    this.notify();
+  }
+
+  private static promoteToActive(label: string) {
+    this.queuedRequests = this.queuedRequests.filter(r => r !== label);
+    this.activeRequests.push(label);
+    this.notify();
+  }
+
+  private static removeRequest(label: string) {
+    this.queuedRequests = this.queuedRequests.filter(r => r !== label);
+    this.activeRequests = this.activeRequests.filter(r => r !== label);
+    this.notify();
   }
 
   async analyzeNewsAndPredict(
@@ -204,7 +225,7 @@ export class AIService implements IAIService {
     const prompt = buildRoundtablePrompt(articles, tickerContext);
 
     try {
-      AIService.addPending(targetLabel);
+      AIService.addQueued(targetLabel);
 
       const apiKeys = apiKey.split(/[\s,\n\r]+/).map(k => k.trim()).filter(Boolean);
       if (apiKeys.length === 0) {
@@ -215,6 +236,7 @@ export class AIService implements IAIService {
         if (signal?.aborted) {
           throw new DOMException('Aborted', 'AbortError');
         }
+        AIService.promoteToActive(targetLabel);
         const res = await generateContentWithRetry(apiKeys, prompt, logId, 1, 2000, signal);
         if (signal?.aborted) {
           throw new DOMException('Aborted', 'AbortError');
@@ -410,7 +432,7 @@ export class AIService implements IAIService {
       console.error(`Gemini consolidated analysis failed for ${targetLabel}:`, error);
       throw error;
     } finally {
-      AIService.removePending(targetLabel);
+      AIService.removeRequest(targetLabel);
     }
   }
 }

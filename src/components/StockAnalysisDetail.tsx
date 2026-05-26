@@ -79,8 +79,8 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
           <AlertTriangle className="warning-icon" size={16} />
           <span>
             <strong>Simulation Sandbox Active:</strong> {!isLiveMode 
-              ? "Running in offline demo mode. All predictions and roundtables are simulated locally." 
-              : "Live analysis was unavailable. Showing simulated projections and local panel consensus."}
+              ? "Running in offline demo mode. All predictions and roundtables are simulated locally. Go to Settings to enter your Gemini API keys and enable Live AI Mode." 
+              : "Live analysis was unavailable. Showing simulated projections and local panel consensus. Open Settings to verify your API keys."}
           </span>
         </div>
       )}
@@ -146,7 +146,11 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
           </div>
         </div>
 
-        <p className="forecast-summary">{prediction.summary || 'Outlook details pending review.'}</p>
+        <p className="forecast-summary">
+          {isLoading 
+            ? "AI Roundtable is analyzing recent asset news and generating 14-day projections..." 
+            : (prediction.summary || 'Outlook details pending review.')}
+        </p>
 
         <div className="forecast-details">
           <div>
