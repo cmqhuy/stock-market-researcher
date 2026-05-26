@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, Settings, ShieldAlert, RefreshCw, Copy, Check, Clock } from 'lucide-react';
 import type { AppSettings } from '../types';
 import { GeminiLogger, type GeminiLogEntry } from '../services/ai/logger';
@@ -27,6 +27,19 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendin
   const [recentLog, setRecentLog] = useState<GeminiLogEntry[]>([]);
   const [sessionTotal, setSessionTotal] = useState(0);
   const [copied, setCopied] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!isPendingListOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsPendingListOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isPendingListOpen]);
 
   useEffect(() => {
     return GeminiLogger.subscribe((entries) => {
@@ -94,7 +107,7 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenSettings, pendin
 
             {/* Pending / log badge — always visible in live mode once any log entry exists */}
             {(hasPending || hasLog) && (
-              <div style={{ position: 'relative' }}>
+              <div ref={dropdownRef} style={{ position: 'relative' }}>
                 <div
                   className="status-badge"
                   onClick={() => setIsPendingListOpen(!isPendingListOpen)}
