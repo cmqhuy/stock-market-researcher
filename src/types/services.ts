@@ -14,7 +14,11 @@ export interface IAIService {
     apiKey: string,
     articles: NewsArticle[],
     tickerContext?: { ticker: string; name: string },
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    logMeta?: {
+      callsite: 'useMarketAnalysis' | 'useStockAnalysis' | 'manual';
+      trigger: string;
+    }
   ): Promise<{
     newsAnalyses: Record<string, ArticleAnalysis>;
     prediction: Prediction14Day;

@@ -58,7 +58,7 @@ export function useMarketAnalysis(
     };
   }, [settings.apiKey, settings.mode]);
 
-  const runMarketAnalysis = useCallback(async (currentSettings: AppSettings) => {
+  const runMarketAnalysis = useCallback(async (currentSettings: AppSettings, trigger = 'manual-refresh') => {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     setIsLoadingMarket(true);
@@ -95,7 +95,8 @@ export function useMarketAnalysis(
           currentSettings.apiKey!,
           activeArticles,
           undefined,
-          controller.signal
+          controller.signal,
+          { callsite: 'useMarketAnalysis', trigger }
         );
 
         // Check if aborted after long-running API call
@@ -186,10 +187,12 @@ export function useMarketAnalysis(
                           (settings.mode === 'live' && keyChanged) || 
                           modeChanged;
 
+    const autoTrigger = isExpired ? 'expired' : modeChanged ? 'mode-changed' : keyChanged ? 'key-changed' : 'settings-changed';
+
     if (needsRefetch) {
       lastUsedKeyRef.current = settings.apiKey;
       lastUsedModeRef.current = settings.mode;
-      runMarketAnalysis(settings);
+      runMarketAnalysis(settings, autoTrigger);
     } else {
       setIsLoadingMarket(false);
     }

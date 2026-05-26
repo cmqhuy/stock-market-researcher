@@ -62,7 +62,7 @@ export function useStockAnalysis(
     };
   }, [settings.apiKey, settings.mode]);
 
-  const runStockAnalysis = useCallback(async (ticker: string, currentSettings: AppSettings) => {
+  const runStockAnalysis = useCallback(async (ticker: string, currentSettings: AppSettings, trigger = 'manual-refresh') => {
     const cleanTicker = ticker.toUpperCase().trim();
     if (inFlightRef.current[cleanTicker]) return;
 
@@ -117,7 +117,8 @@ export function useStockAnalysis(
           currentSettings.apiKey!,
           finalArticles,
           { ticker: cleanTicker, name: nameToUse },
-          controller.signal
+          controller.signal,
+          { callsite: 'useStockAnalysis', trigger }
         );
 
         // Check if aborted after API call
@@ -285,11 +286,13 @@ export function useStockAnalysis(
                             (settings.mode === 'live' && keyChanged) || 
                             modeChanged;
 
+      const autoTrigger = !existing ? 'no-cache' : isExpired ? 'expired' : modeChanged ? 'mode-changed' : keyChanged ? 'key-changed' : 'ticker-changed';
+
       if (needsRefetch) {
         lastUsedKeyRef.current = settings.apiKey;
         lastUsedModeRef.current = settings.mode;
         lastSelectedTickerRef.current = selectedTicker;
-        runStockAnalysis(selectedTicker, settings);
+        runStockAnalysis(selectedTicker, settings, autoTrigger);
       } else if (tickerChanged) {
         lastSelectedTickerRef.current = selectedTicker;
         setIsLoadingStock(false);

@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { IAIService, NewsArticle, ArticleAnalysis, Prediction14Day } from '../../types';
 import { buildRoundtablePrompt } from './promptBuilder';
+import { GeminiLogger } from './logger';
 
 /**
  * Helper to initialize the Gemini client.
@@ -23,10 +24,12 @@ function getGeminiModel(apiKey: string, enableSearch = false) {
 
 /**
  * Retries the Gemini generation with exponential backoff on 429 rate limit exceptions.
+ * Calls GeminiLogger.retry(logId) on each retry attempt.
  */
 async function generateContentWithRetry(
   model: any,
   prompt: string,
+  logId: string,
   maxRetries = 3,
   initialDelayMs = 2000,
   signal?: AbortSignal
@@ -46,6 +49,7 @@ async function generateContentWithRetry(
       const isRateLimit = errorStr.includes('429') || error?.status === 429 || errorStr.toLowerCase().includes('quota');
       if (isRateLimit && attempt < maxRetries) {
         console.warn(`Gemini API rate limited (429). Retrying in ${delay}ms (Attempt ${attempt}/${maxRetries})...`);
+        GeminiLogger.retry(logId);
         if (signal) {
           await new Promise<void>((resolve, reject) => {
             if (signal.aborted) {
@@ -105,7 +109,11 @@ export class AIService implements IAIService {
     apiKey: string,
     articles: NewsArticle[],
     tickerContext?: { ticker: string; name: string },
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    logMeta?: {
+      callsite: 'useMarketAnalysis' | 'useStockAnalysis' | 'manual';
+      trigger: string;
+    }
   ): Promise<{
     newsAnalyses: Record<string, ArticleAnalysis>;
     prediction: Prediction14Day;
@@ -115,12 +123,26 @@ export class AIService implements IAIService {
       ? `${tickerContext.name} (${tickerContext.ticker.toUpperCase()})`
       : 'Global Market Overview';
 
+    const ticker = tickerContext?.ticker?.toUpperCase() ?? 'MARKET';
+    const type = tickerContext ? 'stock-analysis' : 'market-overview';
+    const callsite = logMeta?.callsite ?? 'manual';
+    const trigger = logMeta?.trigger ?? 'unknown';
+
+    // Begin structured log entry
+    const logId = GeminiLogger.begin({
+      callsite,
+      type,
+      ticker,
+      trigger,
+      articleCount: articles.length,
+    });
+
     const prompt = buildRoundtablePrompt(articles, tickerContext);
 
     try {
       AIService.addPending(targetLabel);
       const model = getGeminiModel(apiKey, true); // Enable Google Search grounding
-      const result = await generateContentWithRetry(model, prompt, 3, 2000, signal);
+      const result = await generateContentWithRetry(model, prompt, logId, 3, 2000, signal);
       const textResponse = result.response.text();
 
       if (!textResponse) {
@@ -292,12 +314,18 @@ export class AIService implements IAIService {
         }
       }
 
+      GeminiLogger.success(logId);
       return {
         newsAnalyses: parsed.newsAnalyses,
         prediction: parsed.prediction as Prediction14Day,
         groundingArticles
       };
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError' || (error instanceof DOMException && error.name === 'AbortError')) {
+        GeminiLogger.aborted(logId);
+      } else {
+        GeminiLogger.error(logId, error);
+      }
       console.error(`Gemini consolidated analysis failed for ${targetLabel}:`, error);
       throw error;
     } finally {
