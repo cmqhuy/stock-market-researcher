@@ -103,7 +103,7 @@ export function App() {
             onSelectStock={setSelectedTicker}
             onAddStock={handleAddStock}
             onRemoveStock={handleRemoveStock}
-            isLoading={isLoadingStock || isLoadingQuote}
+            isLoading={isLoadingQuote}
             onReorderWatchlist={reorderWatchlist}
           />
         </div>
