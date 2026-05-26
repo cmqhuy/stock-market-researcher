@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, ListCollapse, X, TrendingUp, TrendingDown, Minus, GripVertical } from 'lucide-react';
+import { Plus, ListCollapse, X, TrendingUp, TrendingDown, Minus, GripVertical, Loader2 } from 'lucide-react';
 import type { WatchlistStock } from '../types';
 
 interface WatchlistPanelProps {
@@ -248,12 +248,11 @@ export const WatchlistPanel: React.FC<WatchlistPanelProps> = ({
           placeholder="Enter ticker (e.g. AAPL)"
           value={newTicker}
           onChange={(e) => setNewTicker(e.target.value)}
-          disabled={isLoading}
           maxLength={6}
           style={{ textTransform: 'uppercase' }}
         />
-        <button type="submit" className="btn-primary" disabled={isLoading || !newTicker.trim()} style={{ padding: '0.75rem' }}>
-          <Plus size={18} />
+        <button type="submit" className="btn-primary" disabled={!newTicker.trim()} style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
         </button>
       </form>
 

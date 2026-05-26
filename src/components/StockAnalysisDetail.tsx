@@ -18,19 +18,8 @@ export const StockAnalysisDetail: React.FC<StockAnalysisDetailProps> = ({
 }) => {
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
 
-  if (!stockAnalysis) {
-    if (isLoading) {
-      return <LoadingPanel minHeight="450px" />;
-    }
-    return (
-      <div className="glass-panel empty-state" style={{ minHeight: '450px' }}>
-        <MessageSquare size={48} className="empty-state-icon" />
-        <h3>No Stock Selected</h3>
-        <p style={{ fontSize: '0.9rem', maxWidth: '350px' }}>
-          Select a stock ticker from the watchlist or enter a new one to evaluate the expert daytrader/investor panel.
-        </p>
-      </div>
-    );
+  if (!stockAnalysis || isLoading) {
+    return <LoadingPanel minHeight="450px" />;
   }
 
   const ticker = stockAnalysis?.ticker || '';

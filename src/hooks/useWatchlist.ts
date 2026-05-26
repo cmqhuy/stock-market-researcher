@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { WatchlistStock } from '../types';
 import { StockService } from '../services/stock';
 import { getMockWatchlist } from '../services/mock';
@@ -19,7 +19,9 @@ export function useWatchlist(mode: 'live' | 'demo') {
     return getMockWatchlist();
   });
 
-  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+  const [loadingQuotesCount, setLoadingQuotesCount] = useState(0);
+  const isLoadingQuote = loadingQuotesCount > 0;
+  const pendingAddsRef = useRef<Set<string>>(new Set());
 
   // Sync watchlist to localStorage
   useEffect(() => {
@@ -99,11 +101,12 @@ export function useWatchlist(mode: 'live' | 'demo') {
   // Add a new stock ticker to the watchlist
   const addStock = useCallback(async (ticker: string) => {
     const cleanTicker = ticker.toUpperCase().trim();
-    if (watchlist.some((s) => s.ticker === cleanTicker)) {
-      return cleanTicker; // Already exists, return to select it
+    if (watchlist.some((s) => s.ticker === cleanTicker) || pendingAddsRef.current.has(cleanTicker)) {
+      return cleanTicker; // Already exists or is currently being added, return to select it
     }
 
-    setIsLoadingQuote(true);
+    pendingAddsRef.current.add(cleanTicker);
+    setLoadingQuotesCount(c => c + 1);
     try {
       let name = `${cleanTicker} Corporation`;
       let price = 100;
@@ -145,7 +148,8 @@ export function useWatchlist(mode: 'live' | 'demo') {
       setWatchlist((prev) => [...prev, newStock]);
       return cleanTicker;
     } finally {
-      setIsLoadingQuote(false);
+      pendingAddsRef.current.delete(cleanTicker);
+      setLoadingQuotesCount(c => Math.max(0, c - 1));
     }
   }, [watchlist, mode]);
 
