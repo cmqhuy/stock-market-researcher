@@ -83,9 +83,9 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ marketState, isL
       )}
 
       {/* Header row: title + as-of timestamp + refresh button */}
-      <div className="flex-between" style={{ marginBottom: '1.25rem' }}>
+      <div className="flex-between" style={{ marginBottom: '0' }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 800 }}>Global Market Overview</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.65rem', fontWeight: 800 }}>Global Market Overview</h2>
           {marketState.lastUpdated && (
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               {(!isLiveMode || marketState.isSimulated) 
