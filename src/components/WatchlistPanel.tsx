@@ -266,8 +266,9 @@ export const WatchlistPanel: React.FC<WatchlistPanelProps> = ({
             const isActive = selectedTicker === stock.ticker;
             const isDragging = index === draggedIndex;
             const hasChange = typeof stock.change === 'number' && !isNaN(stock.change);
-            const isPositive = hasChange && stock.change > 0;
-            const isNegative = hasChange && stock.change < 0;
+            const roundedChange = hasChange ? Number(stock.change.toFixed(2)) : 0;
+            const isPositive = hasChange && roundedChange > 0;
+            const isNegative = hasChange && roundedChange < 0;
             
             const isDragOver = index === dragOverIndex;
             const showIndicatorAbove = isDragOver && dropPosition === 'above';
@@ -309,8 +310,8 @@ export const WatchlistPanel: React.FC<WatchlistPanelProps> = ({
                     <span className={`ticker-change ${isPositive ? 'up' : isNegative ? 'down' : ''}`}>
                       {hasChange ? (
                         <>
-                          {stock.change > 0 ? '+' : ''}
-                          {stock.change.toFixed(2)}%
+                          {roundedChange > 0 ? '+' : ''}
+                          {roundedChange.toFixed(2)}%
                         </>
                       ) : (
                         '--'
@@ -322,8 +323,8 @@ export const WatchlistPanel: React.FC<WatchlistPanelProps> = ({
                   <div 
                     className="watchlist-trend-icon"
                     title={
-                      isPositive ? `Upward intraday movement (+${stock.change.toFixed(2)}%)` :
-                      isNegative ? `Downward intraday movement (${stock.change.toFixed(2)}%)` :
+                      isPositive ? `Upward intraday movement (+${roundedChange.toFixed(2)}%)` :
+                      isNegative ? `Downward intraday movement (${roundedChange.toFixed(2)}%)` :
                       `Flat / no intraday movement`
                     }
                   >
