@@ -161,7 +161,8 @@ export const WatchlistPanel: React.FC<WatchlistPanelProps> = ({
     // Build polygon data for gradient fill (closes the shape at the bottom)
     const fillData = `${pathData} L ${width} ${height} L 0 ${height} Z`;
     
-    const color = changePercent >= 0 ? 'var(--up-color)' : 'var(--down-color)';
+    const roundedChange = Number(changePercent.toFixed(2));
+    const color = roundedChange > 0 ? 'var(--up-color)' : roundedChange < 0 ? 'var(--down-color)' : 'var(--text-dark)';
     const gradientId = `grad-${ticker}`;
 
     return (
