@@ -10,7 +10,9 @@ function getGeminiModel(apiKey: string, enableSearch = false) {
   const genAI = new GoogleGenerativeAI(apiKey);
   const config: any = {
     model: 'gemini-2.5-flash',
-    generationConfig: {}
+    generationConfig: {
+      temperature: 0.15, // Low temperature for high analytical consistency and determinism
+    }
   };
   
   if (enableSearch) {

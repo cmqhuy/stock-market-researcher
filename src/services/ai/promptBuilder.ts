@@ -53,6 +53,11 @@ Finally, synthesize the collective findings across both the provided articles an
 - keyDrivers: An array of exactly 3 bullet points representing the primary positive or negative drivers supporting your prediction.
 - mainRisks: An array of exactly 3 bullet points representing the primary risks that could invalidate your prediction.
 
+STRICT CONSISTENCY & CONSENSUS RULES:
+- The 'consensusStance' for any article must represent a logical synthesis of the individual agent stances. If there is a clear majority (e.g., 3 out of 4 agents bullish), the consensus must reflect it. If the agents are split or neutral, the consensus must be 'unchanged'.
+- The unified 14-day 'stance' must follow logically from the overall balance of article analyses and search grounding results. For example, if the consensus stances of the news and recent search grounding catalysts are predominantly positive, the final stance must be 'up'; if negative, 'down'; if mixed, 'unchanged'. Do not make arbitrary or contradictory projections.
+- Output consistent and repeatable analysis. The confidence score must represent a logical assessment of the strength of the evidence (e.g., high agreement and strong catalysts = high confidence; highly mixed indicators = lower confidence).
+
 Your response must be a JSON object matching this structure:
 {
   "newsAnalyses": {
